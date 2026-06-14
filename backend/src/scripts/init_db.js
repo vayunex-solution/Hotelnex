@@ -1,12 +1,14 @@
 import mysql from 'mysql2/promise';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { createRequire } from 'module';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const require = createRequire(import.meta.url);
 
 const dbType = process.env.DB_TYPE || 'mysql';
 const dbName = process.env.DB_NAME || 'hotel_management';
@@ -284,7 +286,7 @@ async function initializeMySQL() {
 }
 
 async function initializeSQLite() {
-  const sqlite3 = (await import('sqlite3')).default;
+  const sqlite3 = require('sqlite3');
   const startTime = Date.now();
   const dbPath = path.resolve(__dirname, '../../database.sqlite');
   console.log(`[SQLite] Initializing SQLite database at: ${dbPath}`);
