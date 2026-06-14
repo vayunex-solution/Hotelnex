@@ -14,8 +14,6 @@ node_modules/
 database.sqlite
 
 # Production build outputs
-dist/
-build/
 out/
 .next/
 

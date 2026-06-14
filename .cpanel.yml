@@ -1,0 +1,5 @@
+---
+deployment:
+  tasks:
+    - /bin/cp -Rf backend/. /home/vayunexs/api.hotelnex.vayunexsolution.com/
+    - /bin/cp -Rf frontend/dist/. /home/vayunexs/hotelnex.vayunexsolution.com/
