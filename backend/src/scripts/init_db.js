@@ -1,5 +1,4 @@
 import mysql from 'mysql2/promise';
-import sqlite3 from 'sqlite3';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
@@ -285,6 +284,7 @@ async function initializeMySQL() {
 }
 
 async function initializeSQLite() {
+  const sqlite3 = (await import('sqlite3')).default;
   const startTime = Date.now();
   const dbPath = path.resolve(__dirname, '../../database.sqlite');
   console.log(`[SQLite] Initializing SQLite database at: ${dbPath}`);

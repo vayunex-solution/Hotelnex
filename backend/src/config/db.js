@@ -1,5 +1,4 @@
 import mysql from 'mysql2/promise';
-import sqlite3 from 'sqlite3';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
@@ -14,6 +13,7 @@ const dbType = process.env.DB_TYPE || 'mysql';
 let pool;
 
 if (dbType === 'sqlite') {
+  const sqlite3 = (await import('sqlite3')).default;
   const dbPath = path.resolve(__dirname, '../../database.sqlite');
   console.log(`[Database] Initializing SQLite database at: ${dbPath}`);
   
