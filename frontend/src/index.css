@@ -2,29 +2,110 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ─── Base Font & Smoothing ───────────────────────────────────────────────── */
 :root {
   font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
-
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-body {
-  margin: 0;
-  min-width: 320px;
-  min-height: 100vh;
-  background-color: #020617;
-}
+/* Dark mode body */
+html.dark body  { background-color: #020617; color: rgba(255,255,255,0.87); }
+/* Light mode body (default) */
+html:not(.dark) body { background-color: #f8fafc; color: #0f172a; }
 
-#root {
-  width: 100%;
-  min-height: 100vh;
-}
+body   { margin: 0; min-width: 320px; min-height: 100vh; }
+#root  { width: 100%; min-height: 100vh; }
+
+/* ═══════════════════════════════════════════════════════════════════
+   LIGHT MODE OVERRIDES
+   When <html> does NOT have the .dark class these rules kick in,
+   remapping the dark slate palette to clean light equivalents.
+   No page-level JSX changes needed — purely CSS cascade.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── Backgrounds ───────────────────────────────────────────────── */
+html:not(.dark) .bg-slate-950  { background-color: #f8fafc; }
+html:not(.dark) .bg-slate-900  { background-color: #f1f5f9; }
+html:not(.dark) .bg-slate-800  { background-color: #e2e8f0; }
+html:not(.dark) .bg-slate-700  { background-color: #cbd5e1; }
+
+/* Semi-transparent backgrounds */
+html:not(.dark) .bg-slate-900\/80 { background-color: rgba(241,245,249,.8); }
+html:not(.dark) .bg-slate-900\/70 { background-color: rgba(241,245,249,.7); }
+html:not(.dark) .bg-slate-900\/60 { background-color: rgba(241,245,249,.6); }
+html:not(.dark) .bg-slate-900\/40 { background-color: rgba(241,245,249,.4); }
+html:not(.dark) .bg-slate-900\/30 { background-color: rgba(241,245,249,.3); }
+html:not(.dark) .bg-slate-800\/80 { background-color: rgba(226,232,240,.8); }
+html:not(.dark) .bg-slate-800\/60 { background-color: rgba(226,232,240,.6); }
+html:not(.dark) .bg-slate-800\/40 { background-color: rgba(226,232,240,.4); }
+html:not(.dark) .bg-slate-800\/30 { background-color: rgba(226,232,240,.3); }
+html:not(.dark) .bg-slate-800\/25 { background-color: rgba(226,232,240,.25); }
+html:not(.dark) .bg-slate-800\/20 { background-color: rgba(226,232,240,.2); }
+html:not(.dark) .bg-slate-800\/10 { background-color: rgba(226,232,240,.1); }
+html:not(.dark) .bg-slate-800\/5  { background-color: rgba(226,232,240,.05); }
+
+/* Modal overlays — keep dark so dimming works correctly */
+html:not(.dark) .bg-slate-950\/90 { background-color: rgba(15,23,42,.90); }
+html:not(.dark) .bg-slate-950\/85 { background-color: rgba(15,23,42,.85); }
+html:not(.dark) .bg-slate-950\/70 { background-color: rgba(15,23,42,.70); }
+
+/* ── Borders ───────────────────────────────────────────────────── */
+html:not(.dark) .border-slate-800    { border-color: #cbd5e1; }
+html:not(.dark) .border-slate-700    { border-color: #94a3b8; }
+html:not(.dark) .border-slate-800\/80 { border-color: rgba(203,213,225,.8); }
+html:not(.dark) .border-slate-800\/60 { border-color: rgba(203,213,225,.6); }
+html:not(.dark) .border-slate-800\/20 { border-color: rgba(203,213,225,.2); }
+html:not(.dark) .border-slate-700\/80 { border-color: rgba(148,163,184,.8); }
+html:not(.dark) .border-slate-700\/50 { border-color: rgba(148,163,184,.5); }
+html:not(.dark) .border-slate-700\/30 { border-color: rgba(148,163,184,.3); }
+
+/* Divide utilities */
+html:not(.dark) .divide-slate-800\/80 > :not([hidden]) ~ :not([hidden]) { border-color: rgba(203,213,225,.8); }
+html:not(.dark) .divide-y.divide-slate-800\/80 > :not([hidden]) ~ :not([hidden]) { border-color: rgba(203,213,225,.8); }
+
+/* ── Text ──────────────────────────────────────────────────────── */
+html:not(.dark) .text-white   { color: #0f172a; }
+html:not(.dark) .text-slate-100 { color: #1e293b; }
+html:not(.dark) .text-slate-200 { color: #334155; }
+html:not(.dark) .text-slate-300 { color: #475569; }
+html:not(.dark) .text-slate-400 { color: #475569; }
+html:not(.dark) .text-slate-500 { color: #64748b; }
+html:not(.dark) .text-slate-600 { color: #94a3b8; }
+
+/* ── Hover states ──────────────────────────────────────────────── */
+html:not(.dark) .hover\:bg-slate-950:hover  { background-color: #f8fafc; }
+html:not(.dark) .hover\:bg-slate-900:hover  { background-color: #f1f5f9; }
+html:not(.dark) .hover\:bg-slate-800:hover  { background-color: #e2e8f0; }
+html:not(.dark) .hover\:bg-slate-700:hover  { background-color: #cbd5e1; }
+html:not(.dark) .hover\:bg-slate-800\/25:hover { background-color: rgba(226,232,240,.25); }
+html:not(.dark) .hover\:bg-slate-800\/50:hover { background-color: rgba(226,232,240,.50); }
+html:not(.dark) .hover\:bg-slate-750:hover  { background-color: #d4dce8; }
+html:not(.dark) .hover\:text-white:hover    { color: #0f172a; }
+html:not(.dark) .hover\:text-slate-200:hover { color: #334155; }
+html:not(.dark) .hover\:text-slate-300:hover { color: #475569; }
+
+/* ── Input / Form elements ─────────────────────────────────────── */
+html:not(.dark) input,
+html:not(.dark) select,
+html:not(.dark) textarea       { color: #0f172a; }
+html:not(.dark) input::placeholder,
+html:not(.dark) textarea::placeholder { color: #94a3b8; }
+html:not(.dark) select option  { background-color: #f1f5f9; color: #0f172a; }
+
+/* ── Scrollbar (lighter in light mode) ─────────────────────────── */
+html:not(.dark) ::-webkit-scrollbar       { width: 6px; height: 6px; }
+html:not(.dark) ::-webkit-scrollbar-track { background: #f1f5f9; }
+html:not(.dark) ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 3px; }
+html:not(.dark) ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+
+/* ── Group hover text fix ──────────────────────────────────────── */
+html:not(.dark) .group:hover .group-hover\:text-white { color: #0f172a; }
+
+/* ── Shadow overrides (lighter in light mode) ──────────────────── */
+html:not(.dark) .shadow-2xl { box-shadow: 0 25px 50px -12px rgba(0,0,0,0.10); }
+html:not(.dark) .shadow-xl  { box-shadow: 0 20px 25px -5px rgba(0,0,0,0.08); }

@@ -1,17 +1,19 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
-import { Hotel, Mail, Lock, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { useTheme } from '../context/ThemeContext.jsx';
+import { Hotel, Mail, Lock, Eye, EyeOff, Loader2, Sun, Moon } from 'lucide-react';
 
 const Login = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail]               = useState('');
+  const [password, setPassword]         = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [error, setError]               = useState('');
+  const [loading, setLoading]           = useState(false);
 
-  const { login } = useAuth();
-  const navigate = useNavigate();
+  const { login }         = useAuth();
+  const { isDark, toggleTheme } = useTheme();
+  const navigate          = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -25,15 +27,9 @@ const Login = () => {
     setLoading(true);
     try {
       const userData = await login(email.trim(), password);
-      // Redirect based on role
-      if (userData.role === 'admin') {
-        navigate('/dashboard');
-      } else {
-        navigate('/rooms');
-      }
+      navigate(userData.role === 'admin' ? '/dashboard' : '/rooms');
     } catch (err) {
-      const message = err?.response?.data?.message || 'Login failed. Please check your credentials.';
-      setError(message);
+      setError(err?.response?.data?.message || 'Login failed. Please check your credentials.');
     } finally {
       setLoading(false);
     }
@@ -46,6 +42,18 @@ const Login = () => {
         <div className="absolute -top-40 -right-40 w-96 h-96 bg-indigo-600/10 rounded-full blur-3xl" />
         <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-violet-600/10 rounded-full blur-3xl" />
       </div>
+
+      {/* Theme toggle — top right */}
+      <button
+        id="login-theme-toggle"
+        onClick={toggleTheme}
+        title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+        className="fixed top-4 right-4 z-50 w-10 h-10 rounded-xl border border-slate-700 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800 transition-all duration-200 shadow-lg"
+      >
+        {isDark
+          ? <Sun  className="w-4 h-4 text-amber-400" />
+          : <Moon className="w-4 h-4 text-indigo-400" />}
+      </button>
 
       <div className="relative w-full max-w-md">
         {/* Card */}

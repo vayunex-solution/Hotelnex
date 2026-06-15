@@ -1,21 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
+import { useTheme } from '../../context/ThemeContext.jsx';
 import { 
   LayoutDashboard, BedDouble, History, LogOut, Hotel, 
-  Clock, User, Users, CalendarRange, Menu, X 
+  Clock, User, Users, CalendarRange, Menu, X, Sun, Moon
 } from 'lucide-react';
 
 const NAV_LINKS = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/rooms', icon: BedDouble, label: 'Rooms' },
-  { to: '/bookings', icon: CalendarRange, label: 'Bookings' },
-  { to: '/history', icon: History, label: 'Booking History' },
-  { to: '/guests', icon: Users, label: 'Guests' },
+  { to: '/rooms',     icon: BedDouble,        label: 'Rooms'     },
+  { to: '/bookings',  icon: CalendarRange,    label: 'Bookings'  },
+  { to: '/history',   icon: History,          label: 'Booking History' },
+  { to: '/guests',    icon: Users,            label: 'Guests'    },
 ];
 
 const MainLayout = ({ children }) => {
   const { user, logout } = useAuth();
+  const { isDark, toggleTheme } = useTheme();
   const [time, setTime] = useState(new Date());
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -133,13 +135,25 @@ const MainLayout = ({ children }) => {
             <span className="font-semibold text-slate-200 text-sm truncate">Grand Vayunex Hotel</span>
           </div>
 
-          <div className="flex items-center gap-3 md:gap-5">
+          <div className="flex items-center gap-2 md:gap-4">
             {/* Clock — hidden on very small screens */}
-            <div className="hidden md:flex items-center gap-2 text-slate-400 border-r border-slate-800 pr-5 text-xs">
+            <div className="hidden md:flex items-center gap-2 text-slate-400 border-r border-slate-800 pr-4 text-xs">
               <Clock className="w-4 h-4 text-indigo-400 shrink-0" />
               <span className="hidden lg:inline">{formatDate(time)}</span>
               <span className="font-semibold text-slate-200 ml-1">{formatTime(time)}</span>
             </div>
+
+            {/* ── Dark / Light Mode Toggle ────────────────────────────── */}
+            <button
+              id="theme-toggle-btn"
+              onClick={toggleTheme}
+              title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+              className="w-9 h-9 rounded-xl border border-slate-700 bg-slate-800 flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-700 transition-all duration-200 shrink-0"
+            >
+              {isDark
+                ? <Sun  className="w-4 h-4 text-amber-400" />
+                : <Moon className="w-4 h-4 text-indigo-400" />}
+            </button>
 
             {/* Profile info */}
             <div className="flex items-center gap-2">
