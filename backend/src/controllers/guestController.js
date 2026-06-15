@@ -6,8 +6,11 @@ const mapGuestUrls = async (guest) => {
   return {
     ...guest,
     guest_photo: await getSignedFileUrl(guest.guest_photo),
-    id_front: await getSignedFileUrl(guest.id_front),
-    id_back: await getSignedFileUrl(guest.id_back),
+    id_front:    await getSignedFileUrl(guest.id_front),
+    id_back:     await getSignedFileUrl(guest.id_back),
+    id_3:        await getSignedFileUrl(guest.id_3),
+    id_4:        await getSignedFileUrl(guest.id_4),
+    id_5:        await getSignedFileUrl(guest.id_5),
   };
 };
 
@@ -93,62 +96,53 @@ export const createGuest = async (req, res) => {
       guestId = insertResult.insertId;
     }
 
-    // Handle uploaded files buffer to Cloudflare R2
+    // Handle uploaded files → upload to S3/B2
     const files = req.files || {};
-    let guest_photo = null;
-    let id_front = null;
-    let id_back = null;
+    const uploadFile = async (key) => {
+      if (!files[key]) return null;
+      return uploadToS3(files[key][0].buffer, files[key][0].originalname, files[key][0].mimetype);
+    };
 
-    if (files['guest_photo']) {
-      guest_photo = await uploadToS3(
-        files['guest_photo'][0].buffer,
-        files['guest_photo'][0].originalname,
-        files['guest_photo'][0].mimetype
-      );
-    }
-    if (files['id_front']) {
-      id_front = await uploadToS3(
-        files['id_front'][0].buffer,
-        files['id_front'][0].originalname,
-        files['id_front'][0].mimetype
-      );
-    }
-    if (files['id_back']) {
-      id_back = await uploadToS3(
-        files['id_back'][0].buffer,
-        files['id_back'][0].originalname,
-        files['id_back'][0].mimetype
-      );
-    }
+    const guest_photo = await uploadFile('guest_photo');
+    const id_front    = await uploadFile('id_front');
+    const id_back     = await uploadFile('id_back');
+    const id_3        = await uploadFile('id_3');
+    const id_4        = await uploadFile('id_4');
+    const id_5        = await uploadFile('id_5');
 
-    if (guest_photo || id_front || id_back) {
-      // Check if document record already exists for this guest
+    if (guest_photo || id_front || id_back || id_3 || id_4 || id_5) {
       const [existingDoc] = await pool.execute(
-        'SELECT id, guest_photo, id_front, id_back FROM guest_documents WHERE guest_id = ? LIMIT 1',
+        'SELECT id, guest_photo, id_front, id_back, id_3, id_4, id_5 FROM guest_documents WHERE guest_id = ? LIMIT 1',
         [guestId]
       );
 
       if (existingDoc.length > 0) {
-        // Update document paths
-        const finalPhoto = guest_photo || existingDoc[0].guest_photo;
-        const finalFront = id_front || existingDoc[0].id_front;
-        const finalBack = id_back || existingDoc[0].id_back;
+        const d = existingDoc[0];
         await pool.execute(
-          'UPDATE guest_documents SET guest_photo = ?, id_front = ?, id_back = ? WHERE guest_id = ?',
-          [finalPhoto, finalFront, finalBack, guestId]
+          `UPDATE guest_documents 
+           SET guest_photo=?, id_front=?, id_back=?, id_3=?, id_4=?, id_5=? 
+           WHERE guest_id=?`,
+          [
+            guest_photo || d.guest_photo,
+            id_front    || d.id_front,
+            id_back     || d.id_back,
+            id_3        || d.id_3,
+            id_4        || d.id_4,
+            id_5        || d.id_5,
+            guestId
+          ]
         );
       } else {
-        // Insert new document paths
         await pool.execute(
-          'INSERT INTO guest_documents (guest_id, guest_photo, id_front, id_back) VALUES (?, ?, ?, ?)',
-          [guestId, guest_photo, id_front, id_back]
+          `INSERT INTO guest_documents (guest_id, guest_photo, id_front, id_back, id_3, id_4, id_5) 
+           VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          [guestId, guest_photo, id_front, id_back, id_3, id_4, id_5]
         );
       }
     }
 
-    // Return the created/updated guest details
     const [finalGuest] = await pool.execute(
-      `SELECT g.*, gd.guest_photo, gd.id_front, gd.id_back 
+      `SELECT g.*, gd.guest_photo, gd.id_front, gd.id_back, gd.id_3, gd.id_4, gd.id_5 
        FROM guests g 
        LEFT JOIN guest_documents gd ON g.id = gd.guest_id 
        WHERE g.id = ?`,
@@ -188,58 +182,52 @@ export const updateGuest = async (req, res) => {
       [full_name.trim(), phone_number.trim(), address ? address.trim() : null, document_url ? document_url.trim() : null, id]
     );
 
-    // Process file updates if any are provided to R2
     const files = req.files || {};
-    let guest_photo = null;
-    let id_front = null;
-    let id_back = null;
+    const uploadFile = async (key) => {
+      if (!files[key]) return null;
+      return uploadToS3(files[key][0].buffer, files[key][0].originalname, files[key][0].mimetype);
+    };
 
-    if (files['guest_photo']) {
-      guest_photo = await uploadToS3(
-        files['guest_photo'][0].buffer,
-        files['guest_photo'][0].originalname,
-        files['guest_photo'][0].mimetype
-      );
-    }
-    if (files['id_front']) {
-      id_front = await uploadToS3(
-        files['id_front'][0].buffer,
-        files['id_front'][0].originalname,
-        files['id_front'][0].mimetype
-      );
-    }
-    if (files['id_back']) {
-      id_back = await uploadToS3(
-        files['id_back'][0].buffer,
-        files['id_back'][0].originalname,
-        files['id_back'][0].mimetype
-      );
-    }
+    const guest_photo = await uploadFile('guest_photo');
+    const id_front    = await uploadFile('id_front');
+    const id_back     = await uploadFile('id_back');
+    const id_3        = await uploadFile('id_3');
+    const id_4        = await uploadFile('id_4');
+    const id_5        = await uploadFile('id_5');
 
-    if (guest_photo || id_front || id_back) {
+    if (guest_photo || id_front || id_back || id_3 || id_4 || id_5) {
       const [docRows] = await pool.execute(
-        'SELECT id, guest_photo, id_front, id_back FROM guest_documents WHERE guest_id = ? LIMIT 1',
+        'SELECT id, guest_photo, id_front, id_back, id_3, id_4, id_5 FROM guest_documents WHERE guest_id = ? LIMIT 1',
         [id]
       );
 
       if (docRows.length > 0) {
-        const finalPhoto = guest_photo || docRows[0].guest_photo;
-        const finalFront = id_front || docRows[0].id_front;
-        const finalBack = id_back || docRows[0].id_back;
+        const d = docRows[0];
         await pool.execute(
-          'UPDATE guest_documents SET guest_photo = ?, id_front = ?, id_back = ? WHERE guest_id = ?',
-          [finalPhoto, finalFront, finalBack, id]
+          `UPDATE guest_documents 
+           SET guest_photo=?, id_front=?, id_back=?, id_3=?, id_4=?, id_5=? 
+           WHERE guest_id=?`,
+          [
+            guest_photo || d.guest_photo,
+            id_front    || d.id_front,
+            id_back     || d.id_back,
+            id_3        || d.id_3,
+            id_4        || d.id_4,
+            id_5        || d.id_5,
+            id
+          ]
         );
       } else {
         await pool.execute(
-          'INSERT INTO guest_documents (guest_id, guest_photo, id_front, id_back) VALUES (?, ?, ?, ?)',
-          [id, guest_photo, id_front, id_back]
+          `INSERT INTO guest_documents (guest_id, guest_photo, id_front, id_back, id_3, id_4, id_5) 
+           VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          [id, guest_photo, id_front, id_back, id_3, id_4, id_5]
         );
       }
     }
 
     const [updatedGuest] = await pool.execute(
-      `SELECT g.*, gd.guest_photo, gd.id_front, gd.id_back 
+      `SELECT g.*, gd.guest_photo, gd.id_front, gd.id_back, gd.id_3, gd.id_4, gd.id_5 
        FROM guests g 
        LEFT JOIN guest_documents gd ON g.id = gd.guest_id 
        WHERE g.id = ?`,

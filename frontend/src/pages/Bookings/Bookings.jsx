@@ -149,13 +149,14 @@ const Bookings = () => {
   const [guestPhone, setGuestPhone]         = useState('');
   const [guestAddress, setGuestAddress]     = useState('');
   const [guestDriveLink, setGuestDriveLink] = useState('');
-  const [photoFile, setPhotoFile]           = useState(null);
-  const [idFrontFile, setIdFrontFile]       = useState(null);
-  const [idBackFile, setIdBackFile]         = useState(null);
+  const [photoFile, setPhotoFile]   = useState(null);
+  const [idFiles, setIdFiles]       = useState(Array(5).fill(null)); // 5 ID document slots
+  const [companions, setCompanions] = useState([]);                  // [{name, phone, idFiles:[null x 3]}]
 
   // Camera
-  const [cameraTarget, setCameraTarget]   = useState(null); // 'photo', 'idFront', 'idBack'
+  const [cameraTarget, setCameraTarget]   = useState(null); // {type:'photo'|'idSlot'|'companionId', index?, compIndex?, idIndex?}
   const [cameraStream, setCameraStream]   = useState(null);
+  const [facingMode, setFacingMode]       = useState('environment'); // 'user'=front | 'environment'=back
   const videoRef  = useRef(null);
   const canvasRef = useRef(null);
 
@@ -189,33 +190,72 @@ const Bookings = () => {
   const startCamera = async (target) => {
     setFormError('');
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 400, height: 300 } });
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 400, height: 300, facingMode } });
       setCameraStream(stream);
       setCameraTarget(target);
       setTimeout(() => { if (videoRef.current) videoRef.current.srcObject = stream; }, 100);
-    } catch { setFormError('Unable to access webcam. Please check permissions.'); }
+    } catch { setFormError('Unable to access camera. Please check permissions.'); }
   };
+
+  const switchCamera = async () => {
+    const newMode = facingMode === 'user' ? 'environment' : 'user';
+    setFacingMode(newMode);
+    if (cameraStream) {
+      cameraStream.getTracks().forEach(t => t.stop());
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: newMode } });
+        setCameraStream(stream);
+        if (videoRef.current) videoRef.current.srcObject = stream;
+      } catch { setFormError('Failed to switch camera.'); }
+    }
+  };
+
   const stopCamera = () => {
     cameraStream?.getTracks().forEach(t => t.stop());
     setCameraStream(null);
     setCameraTarget(null);
   };
+
+  const getCameraLabel = () => {
+    if (!cameraTarget) return '';
+    if (cameraTarget.type === 'photo') return 'Guest Photo';
+    if (cameraTarget.type === 'idSlot') return `ID Document ${cameraTarget.index + 1}`;
+    if (cameraTarget.type === 'companionId') return `Companion ${cameraTarget.compIndex + 1} — ID ${cameraTarget.idIndex + 1}`;
+    return '';
+  };
+
   const capturePhoto = () => {
     if (videoRef.current && canvasRef.current) {
       const ctx = canvasRef.current.getContext('2d');
       ctx.drawImage(videoRef.current, 0, 0, canvasRef.current.width, canvasRef.current.height);
       canvasRef.current.toBlob(blob => {
         if (blob) {
-          const file = new File([blob], `capture-${cameraTarget}-${Date.now()}.png`, { type: 'image/png' });
-          if (cameraTarget === 'photo') setPhotoFile(file);
-          else if (cameraTarget === 'idFront') setIdFrontFile(file);
-          else if (cameraTarget === 'idBack') setIdBackFile(file);
+          const file = new File([blob], `capture-${Date.now()}.png`, { type: 'image/png' });
+          if (cameraTarget.type === 'photo') {
+            setPhotoFile(file);
+          } else if (cameraTarget.type === 'idSlot') {
+            setIdFiles(prev => prev.map((f, i) => i === cameraTarget.index ? file : f));
+          } else if (cameraTarget.type === 'companionId') {
+            setCompanions(prev => prev.map((c, ci) =>
+              ci === cameraTarget.compIndex
+                ? { ...c, idFiles: c.idFiles.map((f, ii) => ii === cameraTarget.idIndex ? file : f) }
+                : c
+            ));
+          }
           stopCamera();
         }
       }, 'image/png');
     }
   };
   useEffect(() => () => { cameraStream?.getTracks().forEach(t => t.stop()); }, [cameraStream]);
+
+  // ── Companion Helpers ─────────────────────────────────────────────────────
+  const addCompanion    = () => setCompanions(prev => [...prev, { name: '', phone: '', idFiles: Array(3).fill(null) }]);
+  const removeCompanion = (i) => setCompanions(prev => prev.filter((_, idx) => idx !== i));
+  const updateCompanion = (i, field, val) => setCompanions(prev => prev.map((c, idx) => idx === i ? { ...c, [field]: val } : c));
+  const updateCompanionId = (ci, ii, file) => setCompanions(prev => prev.map((c, idx) =>
+    idx === ci ? { ...c, idFiles: c.idFiles.map((f, fIdx) => fIdx === ii ? file : f) } : c
+  ));
 
   // ── Guest Lookup ──────────────────────────────────────────────────────────
   const handleGuestLookup = async () => {
@@ -265,8 +305,9 @@ const Bookings = () => {
       fd.append('address', guestAddress.trim());
       fd.append('document_url', guestDriveLink.trim());
       if (photoFile) fd.append('guest_photo', photoFile);
-      if (idFrontFile) fd.append('id_front', idFrontFile);
-      if (idBackFile) fd.append('id_back', idBackFile);
+      // Map 5 ID slots → backend field names
+      const idFieldNames = ['id_front', 'id_back', 'id_3', 'id_4', 'id_5'];
+      idFiles.forEach((file, i) => { if (file) fd.append(idFieldNames[i], file); });
 
       if (guestFound?.id) {
         const res = await api.put(`/guests/${guestFound.id}`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
@@ -276,9 +317,25 @@ const Bookings = () => {
         const res = await api.post('/guests', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
         finalGuestId = res.data.guest.id;
       }
+
+      // Register companion guests
+      const companionGuestIds = [];
+      for (const comp of companions) {
+        if (!comp.name.trim() || !comp.phone.trim()) continue;
+        const cfd = new FormData();
+        cfd.append('full_name', comp.name.trim());
+        cfd.append('phone_number', comp.phone.trim());
+        const cIdNames = ['id_front', 'id_back', 'id_3'];
+        comp.idFiles.forEach((file, i) => { if (file) cfd.append(cIdNames[i], file); });
+        const cRes = await api.post('/guests', cfd, { headers: { 'Content-Type': 'multipart/form-data' } });
+        companionGuestIds.push(cRes.data.guest.id);
+      }
+
       await api.post('/bookings/checkin', {
         room_id: parseInt(selectedRoomId), guest_id: finalGuestId,
-        expected_checkout: hasExpectedCheckout ? expectedCheckout : null, room_rate: parseFloat(roomRate), advance_paid: parseFloat(advancePaid) || 0
+        expected_checkout: hasExpectedCheckout ? expectedCheckout : null,
+        room_rate: parseFloat(roomRate), advance_paid: parseFloat(advancePaid) || 0,
+        companion_ids: companionGuestIds
       });
       setSuccess('✓ Check-in created successfully!');
       setCheckinModalOpen(false);
@@ -330,7 +387,7 @@ const Bookings = () => {
   const openCheckinModal = () => {
     setFormError(''); setSearchQuery(''); setGuestFound(null);
     setGuestName(''); setGuestPhone(''); setGuestAddress(''); setGuestDriveLink('');
-    setPhotoFile(null); setIdFrontFile(null); setIdBackFile(null);
+    setPhotoFile(null); setIdFiles(Array(5).fill(null)); setCompanions([]);
     setSelectedRoomId(''); setExpectedCheckout(''); setHasExpectedCheckout(true); setRoomRate(''); setAdvancePaid('0');
     setCameraTarget(null);
     setCheckinModalOpen(true);
@@ -655,7 +712,7 @@ const Bookings = () => {
                           className="w-full bg-slate-800/80 border border-slate-700 text-white text-xs rounded-xl px-3 py-2.5 focus:outline-none focus:border-indigo-500 transition-all" />
                       </div>
 
-                      {/* KYC */}
+                      {/* ── KYC Section ── */}
                       <div className="space-y-3 pt-2.5 border-t border-slate-800">
                         <div className="flex items-center justify-between">
                           <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
@@ -664,97 +721,145 @@ const Bookings = () => {
                           {guestFound && <span className="text-[10px] text-slate-600 italic">Blank = keep existing</span>}
                         </div>
 
-                        {/* Camera container */}
+                        {/* ── Live Camera Panel ── */}
                         {cameraTarget && (
-                          <div className="bg-slate-950 border border-slate-800/80 rounded-xl p-3 space-y-3 relative">
+                          <div className="bg-slate-950 border border-slate-800/80 rounded-xl p-3 space-y-3">
                             <div className="flex items-center justify-between">
                               <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider flex items-center gap-1.5">
-                                <Camera className="w-3.5 h-3.5 animate-pulse text-indigo-400" /> Live Camera: {cameraTarget === 'photo' ? 'Guest Photo' : cameraTarget === 'idFront' ? 'ID Front' : 'ID Back'}
+                                <Camera className="w-3.5 h-3.5 animate-pulse" />{getCameraLabel()}
                               </span>
-                              <button type="button" onClick={stopCamera} className="text-slate-500 hover:text-white transition-colors">
-                                <X className="w-4 h-4" />
-                              </button>
+                              <div className="flex items-center gap-2">
+                                {/* Front / Back camera toggle */}
+                                <button type="button" onClick={switchCamera}
+                                  className="flex items-center gap-1 text-[10px] px-2.5 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded-lg font-bold transition-all">
+                                  🔄 {facingMode === 'user' ? 'Front Cam' : 'Back Cam'}
+                                </button>
+                                <button type="button" onClick={stopCamera} className="text-slate-500 hover:text-white transition-colors">
+                                  <X className="w-4 h-4" />
+                                </button>
+                              </div>
                             </div>
                             <div className="relative aspect-[4/3] w-full bg-slate-900 rounded-lg overflow-hidden border border-slate-800">
                               <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
                             </div>
                             <div className="flex gap-2">
-                              <button type="button" onClick={stopCamera} className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-semibold transition-colors">
-                                Cancel
-                              </button>
-                              <button type="button" onClick={capturePhoto} className="flex-1 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold transition-all shadow-md shadow-indigo-600/10">
-                                Capture Photo
-                              </button>
+                              <button type="button" onClick={stopCamera} className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-semibold transition-colors">Cancel</button>
+                              <button type="button" onClick={capturePhoto} className="flex-1 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold transition-all shadow-md shadow-indigo-600/10">📸 Capture</button>
                             </div>
                           </div>
                         )}
 
                         <canvas ref={canvasRef} width="640" height="480" className="hidden" />
 
-                        {/* Photo Upload / Capture */}
+                        {/* ── Guest Photo ── */}
                         <div className="space-y-1.5">
                           <label className="block text-[10px] text-slate-500 uppercase tracking-wider font-bold">Guest Photo</label>
                           {photoFile ? (
                             <div className="flex items-center gap-2 bg-emerald-500/5 border border-emerald-500/15 p-2 rounded-xl">
                               <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                              <span className="text-[10px] text-slate-400 flex-1 truncate">Photo ready: {photoFile.name}</span>
-                              <button type="button" onClick={() => setPhotoFile(null)} className="text-red-400 hover:text-red-300 transition-colors"><X className="w-3 h-3" /></button>
+                              <span className="text-[10px] text-slate-400 flex-1 truncate">{photoFile.name}</span>
+                              <button type="button" onClick={() => setPhotoFile(null)} className="text-red-400 hover:text-red-300"><X className="w-3 h-3" /></button>
                             </div>
                           ) : (
                             <div className="flex gap-2">
                               <label className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 border border-slate-700 hover:bg-slate-800 text-slate-300 rounded-xl text-xs font-semibold cursor-pointer transition-colors">
-                                <Plus className="w-3.5 h-3.5" /> Upload File
+                                <Plus className="w-3.5 h-3.5" />Upload
                                 <input type="file" accept="image/*" onChange={e => { if (e.target.files[0]) setPhotoFile(e.target.files[0]); }} className="hidden" />
                               </label>
-                              <button type="button" onClick={() => startCamera('photo')} className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 bg-indigo-600/10 hover:bg-indigo-600/20 border border-indigo-500/20 text-indigo-400 rounded-xl text-xs font-bold transition-all">
-                                <Camera className="w-3.5 h-3.5" /> Use Camera
+                              <button type="button" onClick={() => startCamera({ type: 'photo' })} className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 bg-indigo-600/10 hover:bg-indigo-600/20 border border-indigo-500/20 text-indigo-400 rounded-xl text-xs font-bold transition-all">
+                                <Camera className="w-3.5 h-3.5" />Camera
                               </button>
                             </div>
                           )}
                         </div>
 
-                        {/* ID Front Upload / Capture */}
-                        <div className="space-y-1.5">
-                          <label className="block text-[10px] text-slate-500 uppercase tracking-wider font-bold">Gov. ID Front</label>
-                          {idFrontFile ? (
-                            <div className="flex items-center gap-2 bg-emerald-500/5 border border-emerald-500/15 p-2 rounded-xl">
-                              <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                              <span className="text-[10px] text-slate-400 flex-1 truncate">ID Front ready: {idFrontFile.name}</span>
-                              <button type="button" onClick={() => setIdFrontFile(null)} className="text-red-400 hover:text-red-300 transition-colors"><X className="w-3 h-3" /></button>
+                        {/* ── 5 ID Document Slots ── */}
+                        <div className="space-y-2">
+                          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">ID Documents <span className="text-indigo-400 font-black">(Min. 5 slots)</span></p>
+                          {idFiles.map((file, idx) => (
+                            <div key={idx}>
+                              <p className="text-[9px] text-slate-600 font-semibold mb-1">
+                                ID {idx + 1}{idx === 0 ? ' · Primary Front' : idx === 1 ? ' · Primary Back' : ''}
+                              </p>
+                              {file ? (
+                                <div className="flex items-center gap-2 bg-emerald-500/5 border border-emerald-500/15 p-2 rounded-xl">
+                                  <Check className="w-3 h-3 text-emerald-400 shrink-0" />
+                                  <span className="text-[10px] text-slate-400 flex-1 truncate">{file.name}</span>
+                                  <button type="button" onClick={() => setIdFiles(prev => prev.map((f, i) => i === idx ? null : f))} className="text-red-400 hover:text-red-300"><X className="w-3 h-3" /></button>
+                                </div>
+                              ) : (
+                                <div className="flex gap-1.5">
+                                  <label className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 border border-slate-700 hover:bg-slate-800 text-slate-400 rounded-xl text-[10px] font-semibold cursor-pointer transition-colors">
+                                    <Plus className="w-3 h-3" />Upload File
+                                    <input type="file" accept="image/*,application/pdf" onChange={e => { if (e.target.files[0]) setIdFiles(prev => prev.map((f, i) => i === idx ? e.target.files[0] : f)); }} className="hidden" />
+                                  </label>
+                                  <button type="button" onClick={() => startCamera({ type: 'idSlot', index: idx })} className="flex items-center gap-1 py-1.5 px-3 bg-indigo-600/10 hover:bg-indigo-600/20 border border-indigo-500/20 text-indigo-400 rounded-xl text-[10px] font-bold transition-all">
+                                    <Camera className="w-3 h-3" />Cam
+                                  </button>
+                                </div>
+                              )}
                             </div>
-                          ) : (
-                            <div className="flex gap-2">
-                              <label className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 border border-slate-700 hover:bg-slate-800 text-slate-300 rounded-xl text-xs font-semibold cursor-pointer transition-colors">
-                                <Plus className="w-3.5 h-3.5" /> Upload File
-                                <input type="file" accept="image/*,application/pdf" onChange={e => { if (e.target.files[0]) setIdFrontFile(e.target.files[0]); }} className="hidden" />
-                              </label>
-                              <button type="button" onClick={() => startCamera('idFront')} className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 bg-indigo-600/10 hover:bg-indigo-600/20 border border-indigo-500/20 text-indigo-400 rounded-xl text-xs font-bold transition-all">
-                                <Camera className="w-3.5 h-3.5" /> Use Camera
-                              </button>
-                            </div>
-                          )}
+                          ))}
                         </div>
 
-                        {/* ID Back Upload / Capture */}
-                        <div className="space-y-1.5">
-                          <label className="block text-[10px] text-slate-500 uppercase tracking-wider font-bold">Gov. ID Back</label>
-                          {idBackFile ? (
-                            <div className="flex items-center gap-2 bg-emerald-500/5 border border-emerald-500/15 p-2 rounded-xl">
-                              <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                              <span className="text-[10px] text-slate-400 flex-1 truncate">ID Back ready: {idBackFile.name}</span>
-                              <button type="button" onClick={() => setIdBackFile(null)} className="text-red-400 hover:text-red-300 transition-colors"><X className="w-3 h-3" /></button>
+                        {/* ── Companions Section ── */}
+                        <div className="space-y-2.5 pt-2.5 border-t border-slate-800">
+                          <div className="flex items-center justify-between">
+                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                              <Users className="w-3.5 h-3.5 text-violet-400" />Companions {companions.length > 0 && <span className="text-violet-400">({companions.length})</span>}
+                            </p>
+                            <button type="button" onClick={addCompanion}
+                              className="text-[10px] text-violet-400 hover:text-violet-300 font-bold flex items-center gap-1 transition-colors">
+                              <Plus className="w-3 h-3" />Add Companion
+                            </button>
+                          </div>
+
+                          {companions.map((comp, ci) => (
+                            <div key={ci} className="border border-violet-500/20 bg-violet-500/3 rounded-xl p-3 space-y-2.5">
+                              <div className="flex items-center justify-between">
+                                <span className="text-[10px] font-bold text-violet-400 flex items-center gap-1.5">
+                                  <User className="w-3 h-3" />Companion {ci + 1}
+                                </span>
+                                <button type="button" onClick={() => removeCompanion(ci)} className="text-slate-600 hover:text-red-400 transition-colors">
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                              <div className="grid grid-cols-2 gap-2">
+                                <input value={comp.name} onChange={e => updateCompanion(ci, 'name', e.target.value)}
+                                  placeholder="Full Name *"
+                                  className="bg-slate-800/80 border border-slate-700 text-white text-[10px] rounded-xl px-3 py-2 focus:outline-none focus:border-violet-500 transition-all" />
+                                <input value={comp.phone} onChange={e => updateCompanion(ci, 'phone', e.target.value)}
+                                  placeholder="Phone *"
+                                  className="bg-slate-800/80 border border-slate-700 text-white text-[10px] rounded-xl px-3 py-2 focus:outline-none focus:border-violet-500 transition-all" />
+                              </div>
+                              {/* Companion ID slots (3) */}
+                              <div className="space-y-1.5">
+                                <p className="text-[9px] font-bold text-slate-600 uppercase tracking-wider">ID Documents</p>
+                                {comp.idFiles.map((file, ii) => (
+                                  <div key={ii}>
+                                    {file ? (
+                                      <div className="flex items-center gap-2 bg-emerald-500/5 border border-emerald-500/15 p-1.5 rounded-lg">
+                                        <Check className="w-3 h-3 text-emerald-400 shrink-0" />
+                                        <span className="text-[9px] text-slate-400 flex-1 truncate">{file.name}</span>
+                                        <button type="button" onClick={() => updateCompanionId(ci, ii, null)} className="text-red-400 hover:text-red-300"><X className="w-2.5 h-2.5" /></button>
+                                      </div>
+                                    ) : (
+                                      <div className="flex gap-1.5">
+                                        <label className="flex-1 flex items-center justify-center gap-1 py-1.5 px-2 border border-slate-700 hover:bg-slate-800 text-slate-500 rounded-lg text-[9px] font-semibold cursor-pointer transition-colors">
+                                          <Plus className="w-2.5 h-2.5" />ID {ii + 1}
+                                          <input type="file" accept="image/*,application/pdf" onChange={e => { if (e.target.files[0]) updateCompanionId(ci, ii, e.target.files[0]); }} className="hidden" />
+                                        </label>
+                                        <button type="button" onClick={() => startCamera({ type: 'companionId', compIndex: ci, idIndex: ii })}
+                                          className="flex items-center gap-1 py-1.5 px-2 bg-violet-600/10 hover:bg-violet-600/20 border border-violet-500/20 text-violet-400 rounded-lg text-[9px] font-bold transition-all">
+                                          <Camera className="w-2.5 h-2.5" />
+                                        </button>
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
                             </div>
-                          ) : (
-                            <div className="flex gap-2">
-                              <label className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 border border-slate-700 hover:bg-slate-800 text-slate-300 rounded-xl text-xs font-semibold cursor-pointer transition-colors">
-                                <Plus className="w-3.5 h-3.5" /> Upload File
-                                <input type="file" accept="image/*,application/pdf" onChange={e => { if (e.target.files[0]) setIdBackFile(e.target.files[0]); }} className="hidden" />
-                              </label>
-                              <button type="button" onClick={() => startCamera('idBack')} className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 bg-indigo-600/10 hover:bg-indigo-600/20 border border-indigo-500/20 text-indigo-400 rounded-xl text-xs font-bold transition-all">
-                                <Camera className="w-3.5 h-3.5" /> Use Camera
-                              </button>
-                            </div>
-                          )}
+                          ))}
                         </div>
                       </div>
                     </div>

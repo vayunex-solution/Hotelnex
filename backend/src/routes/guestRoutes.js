@@ -27,8 +27,11 @@ const upload = multer({
 
 const uploadFields = upload.fields([
   { name: 'guest_photo', maxCount: 1 },
-  { name: 'id_front', maxCount: 1 },
-  { name: 'id_back', maxCount: 1 }
+  { name: 'id_front',   maxCount: 1 },
+  { name: 'id_back',    maxCount: 1 },
+  { name: 'id_3',       maxCount: 1 },
+  { name: 'id_4',       maxCount: 1 },
+  { name: 'id_5',       maxCount: 1 },
 ]);
 
 // ─── Routes ──────────────────────────────────────────────────────────────────

@@ -13,7 +13,7 @@ const mapBookingUrls = async (booking) => {
 
 // ─── Check-In Flow (Create Booking + Occupy Room) ───────────────────────────
 export const checkIn = async (req, res) => {
-  const { room_id, guest_id, expected_checkout, room_rate, advance_paid } = req.body;
+  const { room_id, guest_id, expected_checkout, room_rate, advance_paid, companion_ids } = req.body;
   const hotel_id = req.user.hotelId;
   const receptionist_id = req.user.userId;
 
@@ -103,13 +103,30 @@ export const checkIn = async (req, res) => {
       ]
     );
 
+    const bookingId = bookingResult.insertId;
+
+    // 5. Store companion guests if provided
+    if (Array.isArray(companion_ids) && companion_ids.length > 0) {
+      for (const cId of companion_ids) {
+        try {
+          await pool.execute(
+            'INSERT INTO booking_companions (booking_id, guest_id) VALUES (?, ?)',
+            [bookingId, cId]
+          );
+        } catch (e) {
+          console.warn('[BookingController] companion insert warn:', e.message);
+        }
+      }
+    }
+
     return res.status(201).json({
       success: true,
       message: 'Check-in completed successfully. Room status updated to Occupied.',
-      bookingId: bookingResult.insertId,
+      bookingId,
       bookingDetails: {
         roomId: room_id,
         guestId: guest_id,
+        companions: companion_ids || [],
         nights,
         roomRate: room_rate,
         totalAmount: total_amount,
