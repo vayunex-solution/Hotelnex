@@ -6,8 +6,11 @@ const mapBookingUrls = async (booking) => {
   return {
     ...booking,
     guest_photo: await getSignedFileUrl(booking.guest_photo),
-    id_front: await getSignedFileUrl(booking.id_front),
-    id_back: await getSignedFileUrl(booking.id_back),
+    id_front:    await getSignedFileUrl(booking.id_front),
+    id_back:     await getSignedFileUrl(booking.id_back),
+    id_3:        await getSignedFileUrl(booking.id_3),
+    id_4:        await getSignedFileUrl(booking.id_4),
+    id_5:        await getSignedFileUrl(booking.id_5),
   };
 };
 
@@ -232,7 +235,7 @@ export const getBookingHistory = async (req, res) => {
              b.room_rate, b.total_amount, b.advance_paid, b.status, b.created_at,
              g.full_name AS guest_name, g.phone_number AS guest_phone, g.document_url AS guest_drive_link,
              g.address AS guest_address,
-             gd.guest_photo, gd.id_front, gd.id_back,
+             gd.guest_photo, gd.id_front, gd.id_back, gd.id_3, gd.id_4, gd.id_5,
              r.room_number, r.category AS room_category
       FROM bookings b
       JOIN guests g ON b.guest_id = g.id

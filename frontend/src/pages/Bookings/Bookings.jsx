@@ -117,6 +117,24 @@ const BookingCard = ({ booking, onCheckout, onPreview }) => {
               <FileText className="w-3 h-3" />ID Back
             </button>
           )}
+          {booking.id_3 && (
+            <button onClick={() => onPreview(booking, 'id3')}
+              className="inline-flex items-center gap-1 px-2 py-1 bg-slate-800 border border-indigo-500/20 text-indigo-400 rounded-lg text-[10px] font-bold hover:bg-indigo-500/10 transition-all">
+              <FileText className="w-3 h-3" />ID 3
+            </button>
+          )}
+          {booking.id_4 && (
+            <button onClick={() => onPreview(booking, 'id4')}
+              className="inline-flex items-center gap-1 px-2 py-1 bg-slate-800 border border-indigo-500/20 text-indigo-400 rounded-lg text-[10px] font-bold hover:bg-indigo-500/10 transition-all">
+              <FileText className="w-3 h-3" />ID 4
+            </button>
+          )}
+          {booking.id_5 && (
+            <button onClick={() => onPreview(booking, 'id5')}
+              className="inline-flex items-center gap-1 px-2 py-1 bg-slate-800 border border-indigo-500/20 text-indigo-400 rounded-lg text-[10px] font-bold hover:bg-indigo-500/10 transition-all">
+              <FileText className="w-3 h-3" />ID 5
+            </button>
+          )}
         </div>
         <button onClick={() => onCheckout(booking)}
           className="px-3.5 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-md shadow-rose-500/10 shrink-0">
@@ -366,6 +384,9 @@ const Bookings = () => {
       photo: booking.guest_photo,
       idFront: booking.id_front,
       idBack: booking.id_back,
+      id3: booking.id_3,
+      id4: booking.id_4,
+      id5: booking.id_5,
       activeTab: initialTab
     });
     setPreviewModalOpen(true);
@@ -593,6 +614,24 @@ const Bookings = () => {
                               className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold border transition-all ${booking.id_back ? 'bg-slate-800 text-indigo-400 border-indigo-500/20 hover:bg-indigo-500/15 cursor-pointer' : 'text-slate-750 border-slate-800/80 cursor-default text-slate-500'}`}>
                               <FileText className="w-3 h-3" />ID Back
                             </button>
+                            {booking.id_3 && (
+                              <button onClick={() => triggerPreview(booking, 'id3')}
+                                className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold border transition-all bg-slate-800 text-indigo-400 border-indigo-500/20 hover:bg-indigo-500/15 cursor-pointer">
+                                <FileText className="w-3 h-3" />ID 3
+                              </button>
+                            )}
+                            {booking.id_4 && (
+                              <button onClick={() => triggerPreview(booking, 'id4')}
+                                className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold border transition-all bg-slate-800 text-indigo-400 border-indigo-500/20 hover:bg-indigo-500/15 cursor-pointer">
+                                <FileText className="w-3 h-3" />ID 4
+                              </button>
+                            )}
+                            {booking.id_5 && (
+                              <button onClick={() => triggerPreview(booking, 'id5')}
+                                className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold border transition-all bg-slate-800 text-indigo-400 border-indigo-500/20 hover:bg-indigo-500/15 cursor-pointer">
+                                <FileText className="w-3 h-3" />ID 5
+                              </button>
+                            )}
                           </div>
                         </td>
 
@@ -1013,6 +1052,9 @@ const Bookings = () => {
         const activeUrl = selectedPreview.activeTab === 'photo' ? selectedPreview.photo
                         : selectedPreview.activeTab === 'idFront' ? selectedPreview.idFront
                         : selectedPreview.activeTab === 'idBack' ? selectedPreview.idBack
+                        : selectedPreview.activeTab === 'id3' ? selectedPreview.id3
+                        : selectedPreview.activeTab === 'id4' ? selectedPreview.id4
+                        : selectedPreview.activeTab === 'id5' ? selectedPreview.id5
                         : null;
         const isPdf = activeUrl?.toLowerCase()?.endsWith('.pdf');
         return (
@@ -1043,6 +1085,9 @@ const Bookings = () => {
                   { key: 'photo', label: 'Guest Photo', url: selectedPreview.photo, icon: ImageIcon },
                   { key: 'idFront', label: 'ID Front', url: selectedPreview.idFront, icon: FileText },
                   { key: 'idBack', label: 'ID Back', url: selectedPreview.idBack, icon: FileText },
+                  { key: 'id3', label: 'ID 3', url: selectedPreview.id3, icon: FileText },
+                  { key: 'id4', label: 'ID 4', url: selectedPreview.id4, icon: FileText },
+                  { key: 'id5', label: 'ID 5', url: selectedPreview.id5, icon: FileText },
                 ].map(tab => {
                   const Icon = tab.icon;
                   return (

@@ -31,7 +31,7 @@ export const searchGuestByPhone = async (req, res) => {
   try {
     const [rows] = await pool.execute(
       `SELECT g.id, g.hotel_id, g.full_name, g.phone_number, g.document_url, g.address, 
-              gd.guest_photo, gd.id_front, gd.id_back 
+              gd.guest_photo, gd.id_front, gd.id_back, gd.id_3, gd.id_4, gd.id_5 
        FROM guests g 
        LEFT JOIN guest_documents gd ON g.id = gd.guest_id 
        WHERE g.hotel_id = ? AND (g.phone_number = ? OR g.full_name LIKE ?) LIMIT 1`,
@@ -256,7 +256,7 @@ export const getAllGuests = async (req, res) => {
   try {
     let sql = `
       SELECT g.id, g.hotel_id, g.full_name, g.phone_number, g.document_url, g.address, g.created_at,
-             gd.guest_photo, gd.id_front, gd.id_back 
+             gd.guest_photo, gd.id_front, gd.id_back, gd.id_3, gd.id_4, gd.id_5 
       FROM guests g 
       LEFT JOIN guest_documents gd ON g.id = gd.guest_id 
       WHERE g.hotel_id = ?
