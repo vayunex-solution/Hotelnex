@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../../services/api.js';
 import {
   BedDouble, Search, X, Loader2, Wrench, Check,
@@ -9,13 +10,13 @@ import {
 } from 'lucide-react';
 
 // ─── KPI Card ────────────────────────────────────────────────────────────────
-const KpiCard = ({ label, value, sub, icon: Icon, color, loading }) => {
+const KpiCard = ({ label, value, sub, icon: Icon, color, loading, onClick }) => {
   const colors = {
-    emerald: 'border-emerald-500/25 bg-emerald-500/5',
-    rose:    'border-rose-500/25    bg-rose-500/5',
-    amber:   'border-amber-500/25   bg-amber-500/5',
-    indigo:  'border-indigo-500/25  bg-indigo-500/5',
-    violet:  'border-violet-500/25  bg-violet-500/5',
+    emerald: 'border-emerald-500/25 bg-emerald-500/5  hover:border-emerald-500/50 hover:bg-emerald-500/10',
+    rose:    'border-rose-500/25    bg-rose-500/5     hover:border-rose-500/50    hover:bg-rose-500/10',
+    amber:   'border-amber-500/25   bg-amber-500/5    hover:border-amber-500/50   hover:bg-amber-500/10',
+    indigo:  'border-indigo-500/25  bg-indigo-500/5   hover:border-indigo-500/50  hover:bg-indigo-500/10',
+    violet:  'border-violet-500/25  bg-violet-500/5   hover:border-violet-500/50  hover:bg-violet-500/10',
   };
   const iconColors = {
     emerald: 'text-emerald-400 bg-emerald-500/10',
@@ -24,8 +25,20 @@ const KpiCard = ({ label, value, sub, icon: Icon, color, loading }) => {
     indigo:  'text-indigo-400  bg-indigo-500/10',
     violet:  'text-violet-400  bg-violet-500/10',
   };
+  const arrowColors = {
+    emerald: 'text-emerald-400',
+    rose:    'text-rose-400',
+    amber:   'text-amber-400',
+    indigo:  'text-indigo-400',
+    violet:  'text-violet-400',
+  };
   return (
-    <div className={`relative border rounded-2xl p-4 sm:p-5 overflow-hidden ${colors[color]}`}>
+    <button
+      onClick={onClick}
+      className={`group relative border rounded-2xl p-4 sm:p-5 overflow-hidden text-left w-full
+        cursor-pointer hover:scale-[1.03] hover:shadow-lg active:scale-[0.98]
+        transition-all duration-200 ease-out ${colors[color]}`}
+    >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">{label}</p>
@@ -38,7 +51,11 @@ const KpiCard = ({ label, value, sub, icon: Icon, color, loading }) => {
           <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
         </div>
       </div>
-    </div>
+      {/* Hover arrow indicator */}
+      <div className={`absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200 ${arrowColors[color]}`}>
+        <ChevronRight className="w-3.5 h-3.5" />
+      </div>
+    </button>
   );
 };
 
@@ -278,12 +295,14 @@ const Dashboard = () => {
   // ── Occupancy % ──────────────────────────────────────────────────────────
   const occupancyPct = stats.totalRooms > 0 ? Math.round((stats.occupied / stats.totalRooms) * 100) : 0;
 
+  const navigate = useNavigate();
+
   const KPI_CARDS = [
-    { label: 'Available Rooms',  value: stats.available,      sub: `of ${stats.totalRooms} total`,    icon: BedDouble,        color: 'emerald' },
-    { label: 'Occupied Rooms',   value: stats.occupied,       sub: `${occupancyPct}% occupancy`,      icon: Users,            color: 'rose'    },
-    { label: 'In Maintenance',   value: stats.maintenance,    sub: 'under service',                   icon: Wrench,           color: 'amber'   },
-    { label: 'Check-ins Today',  value: stats.todayCheckins,  sub: 'new arrivals',                    icon: LogIn,            color: 'indigo'  },
-    { label: 'Check-outs Today', value: stats.todayCheckouts, sub: 'departures',                      icon: LogOut,           color: 'violet'  },
+    { label: 'Available Rooms',  value: stats.available,      sub: `of ${stats.totalRooms} total`,    icon: BedDouble, color: 'emerald', to: '/rooms'    },
+    { label: 'Occupied Rooms',   value: stats.occupied,       sub: `${occupancyPct}% occupancy`,      icon: Users,     color: 'rose',    to: '/rooms'    },
+    { label: 'In Maintenance',   value: stats.maintenance,    sub: 'under service',                   icon: Wrench,    color: 'amber',   to: '/rooms'    },
+    { label: 'Check-ins Today',  value: stats.todayCheckins,  sub: 'new arrivals',                    icon: LogIn,     color: 'indigo',  to: '/bookings' },
+    { label: 'Check-outs Today', value: stats.todayCheckouts, sub: 'departures',                      icon: LogOut,    color: 'violet',  to: '/history'  },
   ];
 
   return (
@@ -318,7 +337,12 @@ const Dashboard = () => {
       {/* ── KPI CARDS ──────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
         {KPI_CARDS.map((kpi) => (
-          <KpiCard key={kpi.label} {...kpi} loading={loading} />
+          <KpiCard
+            key={kpi.label}
+            {...kpi}
+            loading={loading}
+            onClick={() => navigate(kpi.to)}
+          />
         ))}
       </div>
 
