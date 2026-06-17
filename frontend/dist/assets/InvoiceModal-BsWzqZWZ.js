@@ -1,0 +1,122 @@
+import{c as n,r as l,j as e,b as I,e as B,X as H,f as z,B as E,d as T,U as q,a as j}from"./index-B2qpUnEp.js";import{C as U}from"./circle-alert-B7-3IyWC.js";import{F as O}from"./image-CB__Y0V-.js";import{M as $}from"./map-pin-DqjdQCCc.js";import{P as G}from"./phone-C3K9ZhJ2.js";import{I as N}from"./indian-rupee-CRASUsCI.js";/**
+ * @license lucide-react v0.395.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */const te=n("ArrowUpRight",[["path",{d:"M7 7h10v10",key:"1tivn9"}],["path",{d:"M7 17 17 7",key:"1vkiza"}]]);/**
+ * @license lucide-react v0.395.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */const w=n("Calendar",[["path",{d:"M8 2v4",key:"1cmpym"}],["path",{d:"M16 2v4",key:"4m81vk"}],["rect",{width:"18",height:"18",x:"3",y:"4",rx:"2",key:"1hopcy"}],["path",{d:"M3 10h18",key:"8toen8"}]]);/**
+ * @license lucide-react v0.395.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */const V=n("Download",[["path",{d:"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4",key:"ih7n3h"}],["polyline",{points:"7 10 12 15 17 10",key:"2ggqvy"}],["line",{x1:"12",x2:"12",y1:"15",y2:"3",key:"1vk2je"}]]);/**
+ * @license lucide-react v0.395.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */const Y=n("Printer",[["path",{d:"M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2",key:"143wyd"}],["path",{d:"M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6",key:"1itne7"}],["rect",{x:"6",y:"14",width:"12",height:"8",rx:"1",key:"1ue0tg"}]]);/**
+ * @license lucide-react v0.395.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */const se=n("Receipt",[["path",{d:"M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z",key:"q3az6g"}],["path",{d:"M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8",key:"1h4pet"}],["path",{d:"M12 17.5v-11",key:"1jc1ny"}]]);/**
+ * @license lucide-react v0.395.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */const v=n("SquareCheckBig",[["path",{d:"m9 11 3 3L22 4",key:"1pflzl"}],["path",{d:"M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11",key:"1jnkn4"}]]);/**
+ * @license lucide-react v0.395.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */const p=n("Square",[["rect",{width:"18",height:"18",x:"3",y:"3",rx:"2",key:"afitv7"}]]),y=(a,i={})=>{if(!a)return"—";const t=new Date(a);return t.getFullYear()>=2099?"Open Stay":t.toLocaleString("en-IN",{day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit",hour12:!0,...i})},K=a=>{if(!a)return"—";const i=new Date(a);return i.getFullYear()>=2099?"Open Stay":i.toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"})},_="___________________________",ae=({bookingId:a,onClose:i})=>{const[t,S]=l.useState(null),[d,C]=l.useState({name:"HotelNex",phone_number:"",address:""}),[D,h]=l.useState(!0),[b,g]=l.useState(""),[f,R]=l.useState(!1),[u,M]=l.useState(!1),P=l.useRef(null);l.useEffect(()=>{if(!a)return;(async()=>{var r,c;h(!0),g("");try{const[x,A]=await Promise.all([j.get(`/bookings/${a}`),j.get("/settings")]);S(x.data.booking),C(A.data.settings||{})}catch(x){g("Failed to load invoice data. "+(((c=(r=x==null?void 0:x.response)==null?void 0:r.data)==null?void 0:c.message)||""))}finally{h(!1)}})()},[a]);const F=()=>window.print(),L=()=>window.print();if(D)return e.jsx("div",{className:"fixed inset-0 bg-slate-900/60 dark:bg-slate-950/90 backdrop-blur-md z-[100] flex items-center justify-center",children:e.jsxs("div",{className:"bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-10 flex flex-col items-center gap-4",children:[e.jsx(I,{className:"w-10 h-10 text-indigo-400 animate-spin"}),e.jsx("p",{className:"text-slate-400 text-sm",children:"Loading record…"})]})});if(b)return e.jsx("div",{className:"fixed inset-0 bg-slate-900/60 dark:bg-slate-950/90 backdrop-blur-md z-[100] flex items-center justify-center p-4",children:e.jsxs("div",{className:"bg-white dark:bg-slate-900 border border-red-500/30 rounded-2xl p-8 max-w-sm w-full text-center space-y-4",children:[e.jsx(U,{className:"w-10 h-10 text-red-400 mx-auto"}),e.jsx("p",{className:"text-red-300 text-sm font-medium",children:b}),e.jsx("button",{onClick:i,className:"px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-sm font-semibold transition-all",children:"Close"})]})});if(!t)return null;const k=new Date(t.expected_check_out).getFullYear()>=2099,o=(()=>{const s=new Date(t.check_in_time),r=t.actual_check_out?new Date(t.actual_check_out):k?null:new Date(t.expected_check_out);if(!r)return"—";const c=Math.ceil(Math.abs(r-s)/(1e3*60*60*24));return c>0?c:1})(),m=parseFloat(t.total_amount||0)-parseFloat(t.advance_paid||0);return B.createPortal(e.jsxs(e.Fragment,{children:[e.jsx("style",{children:`
+        @media print {
+          #root {
+            display: none !important;
+          }
+          body, html {
+            background: white !important;
+            height: auto !important;
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+          .print-portal-container {
+            position: static !important;
+            background: #fff !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            width: 100% !important;
+            height: auto !important;
+            min-height: auto !important;
+            overflow: visible !important;
+            display: block !important;
+          }
+          .print-modal-inner {
+            position: static !important;
+            background: #fff !important;
+            border: none !important;
+            box-shadow: none !important;
+            max-width: 100% !important;
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            border-radius: 0 !important;
+            overflow: visible !important;
+            display: block !important;
+          }
+          .print-modal-body {
+            overflow: visible !important;
+            display: block !important;
+            height: auto !important;
+            max-height: none !important;
+          }
+          .printable-invoice {
+            position: static !important;
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 8mm 10mm !important;
+            background: #fff !important;
+            color: #000 !important;
+            font-family: 'Arial', sans-serif;
+            font-size: 10pt;
+            line-height: 1.35;
+            display: block !important;
+          }
+          .printable-invoice * { 
+            color: #000 !important; 
+            border-color: #666 !important; 
+          }
+          .print-header { border-bottom: 2px solid #000 !important; margin-bottom: 5mm; padding-bottom: 3mm; }
+          .print-table th, .print-table td { border: 1px solid #666 !important; padding: 4px 6px; }
+          .print-signature-line { border-top: 1px solid #000 !important; }
+          .no-print, .no-print * { display: none !important; }
+          @page { size: A4; margin: 0; }
+          
+          /* Compact print spacing to ensure single page fit */
+          .printable-invoice .space-y-5 > :not([class*="hidden"]) ~ :not([class*="hidden"]) {
+            margin-top: 0.75rem !important;
+          }
+          .printable-invoice .p-4 {
+            padding: 0.5rem 0.75rem !important;
+          }
+          .printable-invoice .pt-3 {
+            padding-top: 0.5rem !important;
+          }
+          .printable-invoice .pb-4 {
+            padding-bottom: 0.5rem !important;
+          }
+          .printable-invoice .mb-4 {
+            margin-bottom: 0.5rem !important;
+          }
+          .printable-invoice .mb-6 {
+            margin-bottom: 0.75rem !important;
+          }
+          .printable-invoice .h-12 {
+            height: 2.25rem !important;
+          }
+        }
+      `}),e.jsx("div",{className:"print-portal-container fixed inset-0 bg-slate-900/60 dark:bg-slate-950/90 backdrop-blur-md z-[100] flex items-start justify-center p-3 sm:p-5 overflow-y-auto",children:e.jsxs("div",{className:"print-modal-inner bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-full max-w-2xl rounded-2xl shadow-2xl flex flex-col overflow-hidden my-auto",children:[e.jsxs("div",{className:"no-print flex flex-col sm:flex-row sm:items-center justify-between px-5 sm:px-6 py-4 sm:py-5 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 gap-4 sm:gap-0",children:[e.jsxs("div",{className:"flex items-center gap-3.5",children:[e.jsx("div",{className:"w-11 h-11 rounded-xl bg-indigo-50 dark:bg-indigo-500/15 border border-indigo-100 dark:border-indigo-500/25 flex items-center justify-center shrink-0",children:e.jsx(O,{className:"w-5 h-5 text-indigo-600 dark:text-indigo-400"})}),e.jsxs("div",{children:[e.jsx("h2",{className:"text-base sm:text-lg font-bold text-slate-900 dark:text-white leading-tight",children:"Guest Physical Record"}),e.jsxs("p",{className:"text-xs text-indigo-600 dark:text-indigo-400 font-bold mt-0.5",children:["Ref: REC-",String(t.id).padStart(5,"0")]})]})]}),e.jsxs("div",{className:"flex items-center gap-2.5 self-end sm:self-auto w-full sm:w-auto justify-end",children:[e.jsxs("button",{onClick:L,className:"flex items-center gap-2 px-4 py-2.5 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white rounded-xl text-sm font-semibold transition-all whitespace-nowrap",children:[e.jsx(V,{className:"w-4 h-4 shrink-0"})," ",e.jsx("span",{className:"hidden sm:inline",children:"Save PDF"})]}),e.jsxs("button",{onClick:F,className:"flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-bold transition-all shadow-lg shadow-indigo-500/20 whitespace-nowrap",children:[e.jsx(Y,{className:"w-4 h-4 shrink-0"})," Print"]}),e.jsx("div",{className:"w-px h-8 bg-slate-200 dark:bg-slate-700 mx-1 hidden sm:block"}),e.jsx("button",{onClick:i,className:"w-10 h-10 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors shrink-0",children:e.jsx(H,{className:"w-5 h-5 shrink-0"})})]})]}),e.jsxs("div",{className:"no-print px-5 sm:px-6 py-3 border-b border-slate-200 dark:border-slate-800/60 bg-slate-50/50 dark:bg-slate-800/30 flex flex-wrap items-center gap-x-5 gap-y-3",children:[e.jsxs("p",{className:"text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5",children:[e.jsx(p,{className:"w-3.5 h-3.5"})," Blank fields for hand-writing:"]}),e.jsxs("div",{className:"flex flex-wrap items-center gap-4",children:[e.jsxs("button",{onClick:()=>R(s=>!s),className:"flex items-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors",children:[f?e.jsx(v,{className:"w-4 h-4 text-indigo-500"}):e.jsx(p,{className:"w-4 h-4 text-slate-400"})," Check-in Time"]}),e.jsxs("button",{onClick:()=>M(s=>!s),className:"flex items-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors",children:[u?e.jsx(v,{className:"w-4 h-4 text-indigo-500"}):e.jsx(p,{className:"w-4 h-4 text-slate-400"})," Check-out Time/Date"]})]})]}),e.jsx("div",{className:"print-modal-body overflow-y-auto flex-1",children:e.jsxs("div",{ref:P,className:"printable-invoice p-6 sm:p-8 space-y-5 text-slate-800 dark:text-slate-100",children:[e.jsxs("div",{className:"print-header pb-4 border-b border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3",children:[e.jsxs("div",{className:"flex items-center gap-4",children:[e.jsx("div",{className:"w-14 h-14 rounded-2xl bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center shrink-0",children:e.jsx(z,{className:"w-7 h-7 text-indigo-400"})}),e.jsxs("div",{children:[e.jsx("h1",{className:"text-xl font-black text-slate-900 dark:text-white tracking-tight leading-tight",children:d.name||"HotelNex"}),d.address&&e.jsxs("p",{className:"text-[11px] text-slate-400 flex items-center gap-1 mt-0.5",children:[e.jsx($,{className:"w-3 h-3"}),d.address]}),d.phone_number&&e.jsxs("p",{className:"text-[11px] text-slate-400 flex items-center gap-1 mt-0.5",children:[e.jsx(G,{className:"w-3 h-3"}),d.phone_number]})]})]}),e.jsxs("div",{className:"text-right",children:[e.jsx("p",{className:"text-[10px] font-bold uppercase tracking-widest text-slate-500",children:"Physical Record"}),e.jsxs("p",{className:"text-lg font-black text-indigo-400 mt-0.5",children:["Ref: REC-",String(t.id).padStart(5,"0")]}),e.jsxs("p",{className:"text-[10px] text-slate-500 mt-1",children:["Issued: ",new Date().toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"})]})]})]}),e.jsxs("div",{className:"grid grid-cols-2 gap-3",children:[e.jsxs("div",{className:"bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60 rounded-xl p-4",children:[e.jsxs("p",{className:"text-[9px] font-black uppercase tracking-widest text-slate-500 mb-2 flex items-center gap-1.5",children:[e.jsx(E,{className:"w-3 h-3"})," Room"]}),e.jsxs("p",{className:"text-lg font-black text-slate-900 dark:text-white",children:["Room ",t.room_number]}),e.jsx("p",{className:"text-xs text-slate-400",children:t.room_category})]}),e.jsxs("div",{className:"bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60 rounded-xl p-4",children:[e.jsxs("p",{className:"text-[9px] font-black uppercase tracking-widest text-slate-500 mb-2 flex items-center gap-1.5",children:[e.jsx(N,{className:"w-3 h-3"})," Rate"]}),e.jsxs("p",{className:"text-lg font-black text-slate-900 dark:text-white",children:["₹",parseFloat(t.room_rate||0).toLocaleString("en-IN"),e.jsx("span",{className:"text-xs text-slate-500 font-normal",children:"/night"})]}),e.jsx("p",{className:"text-xs text-slate-400",children:typeof o=="number"?`${o} night${o>1?"s":""}`:"Open stay"})]})]}),e.jsxs("div",{className:"grid grid-cols-2 gap-3",children:[e.jsxs("div",{className:"bg-slate-50 dark:bg-slate-800/50 border border-emerald-200 dark:border-emerald-500/20 rounded-xl p-4",children:[e.jsxs("p",{className:"text-[9px] font-black uppercase tracking-widest text-slate-500 mb-2 flex items-center gap-1.5",children:[e.jsx(w,{className:"w-3 h-3 text-emerald-400"})," Check-in"]}),e.jsx("p",{className:"text-sm font-bold text-emerald-300",children:f?_:y(t.check_in_time)})]}),e.jsxs("div",{className:"bg-slate-50 dark:bg-slate-800/50 border border-amber-200 dark:border-amber-500/20 rounded-xl p-4",children:[e.jsxs("p",{className:"text-[9px] font-black uppercase tracking-widest text-slate-500 mb-2 flex items-center gap-1.5",children:[e.jsx(w,{className:"w-3 h-3 text-amber-400"})," ",t.actual_check_out?"Check-out":"Exp. Check-out"]}),e.jsx("p",{className:"text-sm font-bold text-amber-300",children:u?_:t.actual_check_out?y(t.actual_check_out):k?"Open Stay":K(t.expected_check_out)})]})]}),e.jsxs("div",{className:"bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60 rounded-xl p-4 space-y-3",children:[e.jsxs("p",{className:"text-[9px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-1.5",children:[e.jsx(T,{className:"w-3 h-3"})," Primary Guest"]}),e.jsxs("div",{className:"grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm",children:[e.jsxs("div",{children:[e.jsx("p",{className:"text-[10px] text-slate-500 font-semibold mb-0.5",children:"Full Name"}),e.jsx("p",{className:"text-slate-900 dark:text-white font-bold",children:t.guest_name})]}),e.jsxs("div",{children:[e.jsx("p",{className:"text-[10px] text-slate-500 font-semibold mb-0.5",children:"Phone"}),e.jsx("p",{className:"text-slate-700 dark:text-slate-300",children:t.guest_phone||"—"})]}),e.jsxs("div",{children:[e.jsx("p",{className:"text-[10px] text-slate-500 font-semibold mb-0.5",children:"Address"}),e.jsx("p",{className:"text-slate-700 dark:text-slate-300 text-xs",children:t.guest_address||"—"})]})]}),e.jsxs("div",{className:"pt-1",children:[e.jsx("p",{className:"text-[10px] text-slate-500 font-semibold mb-0.5",children:"ID / Document Reference"}),e.jsx("p",{className:"text-xs text-indigo-300 font-medium",children:t.guest_drive_link?"ID Documents: Verified & Uploaded on file":"Reference: Presented at counter (physical)"})]}),e.jsxs("div",{className:"pt-3 flex items-end gap-4",children:[e.jsxs("div",{className:"flex-1",children:[e.jsx("p",{className:"text-[10px] text-slate-500 font-semibold mb-4",children:"Guest Signature"}),e.jsx("div",{className:"print-signature-line border-t border-slate-300 dark:border-slate-700 pt-1",children:e.jsx("p",{className:"text-[9px] text-slate-600",children:"(Signature)"})})]}),e.jsxs("div",{className:"flex-1",children:[e.jsx("p",{className:"text-[10px] text-slate-500 font-semibold mb-4",children:"Date"}),e.jsx("div",{className:"print-signature-line border-t border-slate-300 dark:border-slate-700 pt-1",children:e.jsx("p",{className:"text-[9px] text-slate-600",children:"(Date)"})})]})]})]}),t.companions&&t.companions.length>0&&e.jsxs("div",{className:"bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60 rounded-xl p-4",children:[e.jsxs("p",{className:"text-[9px] font-black uppercase tracking-widest text-slate-500 mb-3 flex items-center gap-1.5",children:[e.jsx(q,{className:"w-3 h-3"})," Companion Guests (",t.companions.length,")"]}),e.jsxs("table",{className:"print-table w-full text-xs border-collapse",children:[e.jsx("thead",{children:e.jsxs("tr",{className:"border-b border-slate-200 dark:border-slate-700",children:[e.jsx("th",{className:"py-2 px-3 text-left text-[9px] uppercase tracking-wider text-slate-500 font-black",children:"#"}),e.jsx("th",{className:"py-2 px-3 text-left text-[9px] uppercase tracking-wider text-slate-500 font-black",children:"Name"}),e.jsx("th",{className:"py-2 px-3 text-left text-[9px] uppercase tracking-wider text-slate-500 font-black",children:"Phone"}),e.jsx("th",{className:"py-2 px-3 text-left text-[9px] uppercase tracking-wider text-slate-500 font-black",children:"Address"})]})}),e.jsx("tbody",{children:t.companions.map((s,r)=>e.jsxs("tr",{className:"border-b border-slate-200 dark:border-slate-800/60",children:[e.jsx("td",{className:"py-2 px-3 text-slate-500 font-mono",children:r+1}),e.jsx("td",{className:"py-2 px-3 text-slate-800 dark:text-slate-200 font-semibold",children:s.full_name}),e.jsx("td",{className:"py-2 px-3 text-slate-600 dark:text-slate-400",children:s.phone_number||"—"}),e.jsx("td",{className:"py-2 px-3 text-slate-600 dark:text-slate-400 text-[10px]",children:s.address||"—"})]},r))})]})]}),e.jsxs("div",{className:"bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60 rounded-xl p-4",children:[e.jsxs("p",{className:"text-[9px] font-black uppercase tracking-widest text-slate-500 mb-3 flex items-center gap-1.5",children:[e.jsx(N,{className:"w-3 h-3"})," Billing Summary"]}),e.jsxs("div",{className:"space-y-2 text-sm",children:[e.jsxs("div",{className:"flex justify-between",children:[e.jsx("span",{className:"text-slate-600 dark:text-slate-400",children:"Room Rate"}),e.jsxs("span",{className:"text-slate-800 dark:text-slate-200 font-semibold",children:["₹",parseFloat(t.room_rate||0).toLocaleString("en-IN"),"/night"]})]}),e.jsxs("div",{className:"flex justify-between",children:[e.jsx("span",{className:"text-slate-600 dark:text-slate-400",children:"Nights"}),e.jsx("span",{className:"text-slate-800 dark:text-slate-200 font-semibold",children:typeof o=="number"?o:"—"})]}),e.jsxs("div",{className:"flex justify-between border-t border-slate-200 dark:border-slate-700 pt-2",children:[e.jsx("span",{className:"text-slate-700 dark:text-slate-300 font-semibold",children:"Total Amount"}),e.jsxs("span",{className:"text-slate-900 dark:text-white font-bold text-base",children:["₹",parseFloat(t.total_amount||0).toLocaleString("en-IN")]})]}),e.jsxs("div",{className:"flex justify-between",children:[e.jsx("span",{className:"text-emerald-400 font-semibold",children:"Advance Paid"}),e.jsxs("span",{className:"text-emerald-400 font-bold",children:["₹",parseFloat(t.advance_paid||0).toLocaleString("en-IN")]})]}),e.jsxs("div",{className:"flex justify-between border-t border-slate-200 dark:border-slate-700 pt-2",children:[e.jsx("span",{className:`font-bold ${m>0?"text-amber-400":"text-emerald-400"}`,children:m>0?"Balance Due":"Settled"}),e.jsxs("span",{className:`font-black text-base ${m>0?"text-amber-400":"text-emerald-400"}`,children:["₹",Math.abs(m).toLocaleString("en-IN")]})]})]})]}),e.jsxs("div",{className:"grid grid-cols-2 gap-4 pt-2",children:[e.jsxs("div",{children:[e.jsx("p",{className:"text-[10px] text-slate-500 font-semibold mb-6",children:"Receptionist Signature"}),e.jsx("div",{className:"print-signature-line border-t border-slate-300 dark:border-slate-700 pt-1",children:e.jsx("p",{className:"text-[9px] text-slate-600",children:"(Authorised Signatory)"})})]}),e.jsxs("div",{className:"text-right",children:[e.jsx("p",{className:"text-[10px] text-slate-500 font-semibold mb-6",children:"Hotel Stamp"}),e.jsx("div",{className:"border border-dashed border-slate-300 dark:border-slate-700 h-12 rounded-lg flex items-center justify-center",children:e.jsx("p",{className:"text-[9px] text-slate-700",children:"STAMP"})})]})]}),e.jsx("div",{className:"border-t border-slate-200 dark:border-slate-800 pt-3",children:e.jsxs("p",{className:"text-[9px] text-slate-600 leading-relaxed",children:[e.jsx("span",{className:"font-bold text-slate-500",children:"Terms:"})," Check-out time is 11:00 AM. Late check-out subject to additional charges. The hotel is not responsible for loss of valuables. Please retain this slip until check-out."]})}),e.jsx("div",{className:"border-t border-slate-200 dark:border-slate-800 pt-3 text-center",children:e.jsxs("p",{className:"text-[9px] text-slate-600",children:["by ",e.jsx("span",{className:"font-bold text-slate-500",children:"HotelNex"})," ",e.jsx("span",{className:"text-slate-700",children:"powered by"})," ",e.jsx("span",{className:"font-bold text-indigo-400",children:"vayunex solution"})]})})]})})]})})]}),document.body)};export{te as A,w as C,V as D,ae as I,se as R};

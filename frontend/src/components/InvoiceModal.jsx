@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import api from '../services/api.js';
 import {
   X, Printer, Download, Hotel, MapPin, Phone, Calendar,
@@ -102,51 +103,100 @@ const InvoiceModal = ({ bookingId, onClose }) => {
 
   const pending = parseFloat(booking.total_amount || 0) - parseFloat(booking.advance_paid || 0);
 
-  return (
+  return createPortal(
     <>
-      {/* ── PRINT STYLES (injected via style tag) ────────────────────────── */}
       {/* ── PRINT STYLES ────────────────────────────────────────── */}
       <style>{`
         @media print {
+          #root {
+            display: none !important;
+          }
           body, html {
             background: white !important;
             height: auto !important;
             margin: 0 !important;
             padding: 0 !important;
           }
-          body * {
-            visibility: hidden;
+          .print-portal-container {
+            position: static !important;
+            background: #fff !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            width: 100% !important;
+            height: auto !important;
+            min-height: auto !important;
+            overflow: visible !important;
+            display: block !important;
           }
-          .printable-invoice, .printable-invoice * {
-            visibility: visible;
+          .print-modal-inner {
+            position: static !important;
+            background: #fff !important;
+            border: none !important;
+            box-shadow: none !important;
+            max-width: 100% !important;
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            border-radius: 0 !important;
+            overflow: visible !important;
+            display: block !important;
+          }
+          .print-modal-body {
+            overflow: visible !important;
+            display: block !important;
+            height: auto !important;
+            max-height: none !important;
           }
           .printable-invoice {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-            margin: 0;
-            padding: 12mm 14mm;
+            position: static !important;
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 8mm 10mm !important;
             background: #fff !important;
             color: #000 !important;
             font-family: 'Arial', sans-serif;
-            font-size: 11pt;
+            font-size: 10pt;
+            line-height: 1.35;
+            display: block !important;
           }
           .printable-invoice * { 
             color: #000 !important; 
-            border-color: #888 !important; 
+            border-color: #666 !important; 
           }
-          .print-header { border-bottom: 2px solid #000 !important; margin-bottom: 8mm; padding-bottom: 4mm; }
-          .print-table th, .print-table td { border: 1px solid #888 !important; padding: 4px 8px; }
+          .print-header { border-bottom: 2px solid #000 !important; margin-bottom: 5mm; padding-bottom: 3mm; }
+          .print-table th, .print-table td { border: 1px solid #666 !important; padding: 4px 6px; }
           .print-signature-line { border-top: 1px solid #000 !important; }
-          .no-print, .no-print * { display: none !important; visibility: hidden !important; }
+          .no-print, .no-print * { display: none !important; }
           @page { size: A4; margin: 0; }
+          
+          /* Compact print spacing to ensure single page fit */
+          .printable-invoice .space-y-5 > :not([class*="hidden"]) ~ :not([class*="hidden"]) {
+            margin-top: 0.75rem !important;
+          }
+          .printable-invoice .p-4 {
+            padding: 0.5rem 0.75rem !important;
+          }
+          .printable-invoice .pt-3 {
+            padding-top: 0.5rem !important;
+          }
+          .printable-invoice .pb-4 {
+            padding-bottom: 0.5rem !important;
+          }
+          .printable-invoice .mb-4 {
+            margin-bottom: 0.5rem !important;
+          }
+          .printable-invoice .mb-6 {
+            margin-bottom: 0.75rem !important;
+          }
+          .printable-invoice .h-12 {
+            height: 2.25rem !important;
+          }
         }
       `}</style>
 
       {/* ── SCREEN OVERLAY ───────────────────────────────────────────────── */}
-      <div className="fixed inset-0 bg-slate-900/60 dark:bg-slate-950/90 backdrop-blur-md z-[100] flex items-start justify-center p-3 sm:p-5 overflow-y-auto">
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-full max-w-2xl rounded-2xl shadow-2xl flex flex-col overflow-hidden my-auto">
+      <div className="print-portal-container fixed inset-0 bg-slate-900/60 dark:bg-slate-950/90 backdrop-blur-md z-[100] flex items-start justify-center p-3 sm:p-5 overflow-y-auto">
+        <div className="print-modal-inner bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-full max-w-2xl rounded-2xl shadow-2xl flex flex-col overflow-hidden my-auto">
           
           {/* Modal Header */}
           <div className="no-print flex flex-col sm:flex-row sm:items-center justify-between px-5 sm:px-6 py-4 sm:py-5 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 gap-4 sm:gap-0">
@@ -190,7 +240,7 @@ const InvoiceModal = ({ bookingId, onClose }) => {
             </div>
           </div>
           {/* ── PRINTABLE CARD ──────────────────────────────────────────── */}
-          <div className="overflow-y-auto flex-1">
+          <div className="print-modal-body overflow-y-auto flex-1">
             <div ref={printRef} className="printable-invoice p-6 sm:p-8 space-y-5 text-slate-800 dark:text-slate-100">
               
               {/* ── LETTERHEAD ─────────────────────────────────────────── */}
@@ -403,8 +453,8 @@ const InvoiceModal = ({ bookingId, onClose }) => {
           </div>
         </div>
       </div>
-
-    </>
+    </>,
+    document.body
   );
 };
 
