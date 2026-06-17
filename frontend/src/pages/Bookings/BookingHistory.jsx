@@ -100,7 +100,7 @@ const BookingHistory = () => {
       return [
         `REC-${String(b.id).padStart(5,'0')}`,
         b.guest_name,
-        b.guest_phone,
+        b.guest_phone ? `="${b.guest_phone}"` : '',
         `Room ${b.room_number}`,
         b.room_category,
         cin.toLocaleString('en-IN'),
