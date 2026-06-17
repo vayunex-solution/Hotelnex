@@ -9,6 +9,7 @@ import authRoutes from './routes/authRoutes.js';
 import roomRoutes from './routes/roomRoutes.js';
 import guestRoutes from './routes/guestRoutes.js';
 import bookingRoutes from './routes/bookingRoutes.js';
+import settingsRoutes from './routes/settingsRoutes.js';
 import { requireAuth } from './middlewares/authMiddleware.js';
 import { requireRole } from './middlewares/rbacMiddleware.js';
 
@@ -35,6 +36,22 @@ app.get('/api/health', async (req, res) => {
 // Auth (public — no requireAuth)
 app.use('/api/auth', authRoutes);
 
+// ─── Self-Healing DB Migration ─────────────────────────────────────────────────
+(async () => {
+  try {
+    // Add phone_number column to hotels if it doesn't exist (MySQL ALTER TABLE)
+    await pool.query(
+      `ALTER TABLE hotels ADD COLUMN IF NOT EXISTS phone_number VARCHAR(20) DEFAULT NULL`
+    );
+    console.log('[Migration] hotels.phone_number column ensured.');
+  } catch (e) {
+    // SQLite doesn't support IF NOT EXISTS on ALTER — ignore column already exists
+    if (!e.message?.includes('duplicate column') && !e.message?.includes('already exists')) {
+      console.warn('[Migration] phone_number migration warning:', e.message);
+    }
+  }
+})();
+
 // ─── Protected Routes ──────────────────────────────────────────────────────────
 
 // Static files serving for uploaded guest documents
@@ -50,6 +67,9 @@ app.use('/api/guests', requireAuth, guestRoutes);
 
 // Booking & Check-in / Check-out module (requires auth)
 app.use('/api/bookings', requireAuth, bookingRoutes);
+
+// Settings module (requires auth)
+app.use('/api/settings', requireAuth, settingsRoutes);
 
 // Profile — any authenticated user
 app.get('/api/profile', requireAuth, (req, res) => {

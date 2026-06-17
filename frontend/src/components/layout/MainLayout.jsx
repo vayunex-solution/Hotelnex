@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useTheme } from '../../context/ThemeContext.jsx';
+import api from '../../services/api.js';
 import { 
   LayoutDashboard, BedDouble, History, LogOut, Hotel, 
-  Clock, User, Users, CalendarRange, Menu, X, Sun, Moon
+  Clock, User, Users, CalendarRange, Menu, X, Sun, Moon, Settings
 } from 'lucide-react';
 
 const NAV_LINKS = [
@@ -13,6 +14,7 @@ const NAV_LINKS = [
   { to: '/bookings',  icon: CalendarRange,    label: 'Bookings'  },
   { to: '/history',   icon: History,          label: 'Booking History' },
   { to: '/guests',    icon: Users,            label: 'Guests'    },
+  { to: '/settings',  icon: Settings,         label: 'Settings'  },
 ];
 
 const MainLayout = ({ children }) => {
@@ -20,6 +22,23 @@ const MainLayout = ({ children }) => {
   const { isDark, toggleTheme } = useTheme();
   const [time, setTime] = useState(new Date());
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [hotelName, setHotelName] = useState('HotelNex');
+
+  // Fetch hotel name on mount
+  useEffect(() => {
+    api.get('/settings')
+      .then(res => { if (res.data?.settings?.name) setHotelName(res.data.settings.name); })
+      .catch(() => {});
+  }, []);
+
+  // Listen for real-time settings updates from Settings page
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.detail?.name) setHotelName(e.detail.name);
+    };
+    window.addEventListener('hotel-settings-updated', handler);
+    return () => window.removeEventListener('hotel-settings-updated', handler);
+  }, []);
 
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
@@ -41,7 +60,7 @@ const MainLayout = ({ children }) => {
             <Hotel className="w-5 h-5 text-indigo-400" />
           </div>
           <div>
-            <h1 className="font-bold text-white tracking-tight text-sm">Grand Vayunex</h1>
+            <h1 className="font-bold text-white tracking-tight text-sm">{hotelName}</h1>
             <p className="text-slate-500 text-[10px] uppercase font-bold tracking-wider">Management</p>
           </div>
         </div>
@@ -132,7 +151,7 @@ const MainLayout = ({ children }) => {
               <Menu className="w-4 h-4" />
             </button>
             <Hotel className="w-5 h-5 text-slate-400 hidden sm:block" />
-            <span className="font-semibold text-slate-200 text-sm truncate">Grand Vayunex Hotel</span>
+            <span className="font-semibold text-slate-200 text-sm truncate">{hotelName}</span>
           </div>
 
           <div className="flex items-center gap-2 md:gap-4">

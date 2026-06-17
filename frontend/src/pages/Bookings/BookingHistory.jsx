@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import api from '../../services/api.js';
+import InvoiceModal from '../../components/InvoiceModal.jsx';
 import {
   Search, History, Calendar, Phone, BedDouble, User,
   Loader2, AlertCircle, X, ExternalLink, Image as ImageIcon,
   FileText, RefreshCw, TrendingUp, CheckCircle2, Clock3,
-  XCircle, IndianRupee, ArrowUpRight, Filter
+  XCircle, IndianRupee, ArrowUpRight, Filter, Receipt, Download
 } from 'lucide-react';
 
 // ─── Status Config Helper ────────────────────────────────────────────────────
@@ -50,6 +51,9 @@ const BookingHistory = () => {
   const [previewModalOpen, setPreviewModalOpen] = useState(false);
   const [selectedPreview, setSelectedPreview]   = useState(null);
 
+  // Invoice
+  const [invoiceBookingId, setInvoiceBookingId] = useState(null);
+
   // ─── Fetch ────────────────────────────────────────────────────────────────
   const fetchBookings = useCallback(async (overrideParams = null) => {
     setLoading(true);
@@ -80,6 +84,41 @@ const BookingHistory = () => {
     setFilterGuestName(''); setFilterPhone(''); setFilterRoomNum('');
     setFilterStartDate(''); setFilterEndDate('');
     fetchBookings({ filterGuestName: '', filterPhone: '', filterRoomNum: '', filterStartDate: '', filterEndDate: '' });
+  };
+
+  // ─── Export Excel (CSV UTF-8 BOM) ─────────────────────────────────────────
+  const handleExportExcel = () => {
+    const BOM = '\uFEFF';
+    const headers = ['Invoice ID','Guest Name','Phone','Room','Category','Check-in','Check-out','Nights','Room Rate','Total Amount','Advance Paid','Pending','Status'];
+    const rows = filteredBookings.map(b => {
+      const cin  = new Date(b.check_in_time);
+      const isOpen = new Date(b.expected_check_out).getFullYear() >= 2099;
+      const cout = b.actual_check_out ? new Date(b.actual_check_out) : isOpen ? null : new Date(b.expected_check_out);
+      const nights = cout ? Math.max(1, Math.ceil(Math.abs(cout - cin) / (1000*60*60*24))) : '—';
+      const total   = parseFloat(b.total_amount || 0);
+      const advance = parseFloat(b.advance_paid || 0);
+      return [
+        `INV-${String(b.id).padStart(5,'0')}`,
+        b.guest_name,
+        b.guest_phone,
+        `Room ${b.room_number}`,
+        b.room_category,
+        cin.toLocaleString('en-IN'),
+        cout ? cout.toLocaleDateString('en-IN') : (isOpen ? 'Open Stay' : '—'),
+        nights,
+        parseFloat(b.room_rate || 0).toFixed(2),
+        total.toFixed(2),
+        advance.toFixed(2),
+        (total - advance).toFixed(2),
+        b.status,
+      ].map(v => `"${String(v).replace(/"/g,'""')}"`).join(',');
+    });
+    const csv  = BOM + [headers.join(','), ...rows].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = `bookings_export_${new Date().toISOString().slice(0,10)}.csv`;
+    a.click(); URL.revokeObjectURL(url);
   };
 
   const hasActiveFilters = filterGuestName || filterPhone || filterRoomNum || filterStartDate || filterEndDate;
@@ -127,13 +166,22 @@ const BookingHistory = () => {
           </h1>
           <p className="text-slate-400 text-sm mt-1 ml-0.5">Check-in logs, financial audits &amp; guest settlement history</p>
         </div>
-        <button
-          onClick={() => fetchBookings()}
-          className="flex items-center gap-2 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 rounded-xl text-sm font-semibold transition-all self-start sm:self-auto shrink-0"
-        >
-          <RefreshCw className="w-4 h-4" />
-          Refresh
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => fetchBookings()}
+            className="flex items-center gap-2 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 rounded-xl text-sm font-semibold transition-all self-start sm:self-auto shrink-0"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Refresh
+          </button>
+          <button
+            onClick={handleExportExcel}
+            className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-sm font-bold transition-all shadow-lg shadow-emerald-500/20 self-start sm:self-auto shrink-0"
+          >
+            <Download className="w-4 h-4" />
+            Export Excel
+          </button>
+        </div>
       </div>
 
       {/* ── STATS ROW ───────────────────────────────────────────────────────── */}
@@ -338,6 +386,13 @@ const BookingHistory = () => {
                   </div>
                   {/* Card Footer – docs */}
                   <div className="px-4 pb-4 pt-2 border-t border-slate-800/60 flex items-center gap-2 flex-wrap">
+                    {/* Invoice Button */}
+                    <button
+                      onClick={() => setInvoiceBookingId(booking.id)}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 bg-indigo-500/15 border border-indigo-500/30 text-indigo-400 rounded-lg text-[10px] font-bold hover:bg-indigo-500 hover:text-white transition-all"
+                    >
+                      <Receipt className="w-3 h-3" />Invoice
+                    </button>
                     {booking.guest_drive_link && (
                       <a href={booking.guest_drive_link} target="_blank" rel="noopener noreferrer"
                         className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-500/15 border border-emerald-500/25 text-emerald-400 rounded-lg text-[10px] font-bold hover:bg-emerald-500 hover:text-white transition-all">
@@ -395,6 +450,7 @@ const BookingHistory = () => {
                     <th className="px-5 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Financials</th>
                     <th className="px-5 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Documents</th>
                     <th className="px-5 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Status</th>
+                    <th className="px-5 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Invoice</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/80 text-sm">
@@ -520,6 +576,15 @@ const BookingHistory = () => {
                             {booking.status}
                           </span>
                         </td>
+                        {/* Invoice */}
+                        <td className="px-5 py-4 text-center">
+                          <button
+                            onClick={() => setInvoiceBookingId(booking.id)}
+                            className="inline-flex items-center gap-1 px-3 py-1.5 bg-indigo-500/15 border border-indigo-500/30 text-indigo-400 rounded-lg text-[10px] font-bold hover:bg-indigo-600 hover:text-white hover:border-indigo-600 transition-all"
+                          >
+                            <Receipt className="w-3 h-3" />Invoice
+                          </button>
+                        </td>
                       </tr>
                     );
                   })}
@@ -614,6 +679,14 @@ const BookingHistory = () => {
           </div>
         );
       })()}
+
+      {/* ── INVOICE MODAL ──────────────────────────────────────────────────── */}
+      {invoiceBookingId && (
+        <InvoiceModal
+          bookingId={invoiceBookingId}
+          onClose={() => setInvoiceBookingId(null)}
+        />
+      )}
     </div>
   );
 };

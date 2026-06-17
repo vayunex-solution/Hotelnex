@@ -438,3 +438,56 @@ export const getActiveBookings = async (req, res) => {
   }
 };
 
+// ─── GET /api/bookings/:id  — Full booking detail for Invoice ─────────────────
+export const getBookingDetails = async (req, res) => {
+  const hotel_id = req.user.hotelId;
+  const { id } = req.params;
+
+  try {
+    // 1. Fetch primary booking + guest + room
+    const [rows] = await pool.execute(
+      `SELECT b.id, b.check_in_time, b.expected_check_out, b.actual_check_out,
+              b.room_rate, b.total_amount, b.advance_paid, b.status, b.created_at,
+              g.full_name AS guest_name, g.phone_number AS guest_phone,
+              g.address AS guest_address, g.document_url AS guest_drive_link,
+              r.room_number, r.category AS room_category
+       FROM bookings b
+       JOIN guests g ON b.guest_id = g.id
+       JOIN rooms r  ON b.room_id  = r.id
+       WHERE b.id = ? AND b.hotel_id = ?
+       LIMIT 1`,
+      [id, hotel_id]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Booking not found.' });
+    }
+
+    const booking = rows[0];
+
+    // 2. Fetch companion guests
+    const [companions] = await pool.execute(
+      `SELECT g.full_name, g.phone_number, g.address
+       FROM booking_companions bc
+       JOIN guests g ON bc.guest_id = g.id
+       WHERE bc.booking_id = ?`,
+      [id]
+    );
+
+    return res.status(200).json({
+      success: true,
+      booking: {
+        ...booking,
+        invoice_id: `INV-${String(booking.id).padStart(5, '0')}`,
+        companions,
+      },
+    });
+  } catch (error) {
+    console.error('[BookingController] getBookingDetails error:', error.message);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve booking details.',
+    });
+  }
+};
+

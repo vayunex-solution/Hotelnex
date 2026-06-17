@@ -12,6 +12,7 @@ const Rooms        = React.lazy(() => import('./pages/Rooms/Rooms.jsx'));
 const BookingHistory = React.lazy(() => import('./pages/Bookings/BookingHistory.jsx'));
 const Guests       = React.lazy(() => import('./pages/Guests/Guests.jsx'));
 const Bookings     = React.lazy(() => import('./pages/Bookings/Bookings.jsx'));
+const Settings     = React.lazy(() => import('./pages/Settings/Settings.jsx'));
 
 const Spinner = () => (
   <div className="min-h-screen bg-gray-50 dark:bg-slate-950 flex items-center justify-center">
@@ -31,6 +32,7 @@ const AppRoutes = () => (
       { path: '/history',   Page: BookingHistory },
       { path: '/bookings',  Page: Bookings  },
       { path: '/guests',    Page: Guests    },
+      { path: '/settings',  Page: Settings  },
     ].map(({ path, Page }) => (
       <Route
         key={path}
