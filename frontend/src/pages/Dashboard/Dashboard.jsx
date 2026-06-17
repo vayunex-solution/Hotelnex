@@ -139,6 +139,25 @@ const Dashboard = () => {
   const [advancePaid, setAdvancePaid]           = useState('0');
   const [activeBooking, setActiveBooking]       = useState(null);
 
+  const [occupiedModalOpen, setOccupiedModalOpen] = useState(false);
+  const [activeBookings, setActiveBookings] = useState([]);
+  const [activeBookingsLoading, setActiveBookingsLoading] = useState(false);
+  const [activeBookingsError, setActiveBookingsError] = useState('');
+
+  const fetchActiveBookings = async () => {
+    setActiveBookingsLoading(true);
+    setActiveBookingsError('');
+    try {
+      const res = await api.get('/bookings/active');
+      setActiveBookings(res.data.bookings || []);
+    } catch (err) {
+      console.error(err);
+      setActiveBookingsError('Failed to fetch active bookings.');
+    } finally {
+      setActiveBookingsLoading(false);
+    }
+  };
+
   // ── Fetch ─────────────────────────────────────────────────────────────────
   const fetchDashboardData = useCallback(async () => {
     setLoading(true);
@@ -341,7 +360,14 @@ const Dashboard = () => {
             key={kpi.label}
             {...kpi}
             loading={loading}
-            onClick={() => navigate(kpi.to)}
+            onClick={() => {
+              if (kpi.label === 'Occupied Rooms') {
+                setOccupiedModalOpen(true);
+                fetchActiveBookings();
+              } else {
+                navigate(kpi.to);
+              }
+            }}
           />
         ))}
       </div>
@@ -727,6 +753,111 @@ const Dashboard = () => {
           )}
         </div>
       </div>
+
+      {/* ── OCCUPIED ROOMS MODAL ────────────────────────────────────────────── */}
+      {occupiedModalOpen && (
+        <div
+          className="fixed inset-0 bg-slate-950/75 backdrop-blur-sm z-40 flex items-center justify-center p-4 transition-opacity duration-300"
+          onClick={() => setOccupiedModalOpen(false)}
+        >
+          <div
+            className="bg-slate-950 border border-slate-800 rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl transition-all duration-300 transform scale-100 opacity-100"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="border-b border-slate-800 px-5 py-4 flex items-center justify-between bg-slate-950">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-rose-500/15 border border-rose-500/25 flex items-center justify-center shrink-0">
+                  <Users className="w-5 h-5 text-rose-400" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white">Occupied Rooms List</h3>
+                  <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">Currently checked-in guests</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setOccupiedModalOpen(false)}
+                className="w-9 h-9 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-400 hover:text-white transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="px-5 py-5 max-h-[60vh] overflow-y-auto space-y-4">
+              {activeBookingsLoading ? (
+                <div className="flex flex-col items-center justify-center py-12 gap-3">
+                  <Loader2 className="w-8 h-8 text-rose-500 animate-spin" />
+                  <span className="text-sm text-slate-400">Fetching occupied room details...</span>
+                </div>
+              ) : activeBookingsError ? (
+                <div className="p-4 bg-red-500/8 border border-red-500/20 rounded-xl text-red-400 text-sm flex items-start gap-2.5">
+                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                  <span>{activeBookingsError}</span>
+                </div>
+              ) : activeBookings.length === 0 ? (
+                <div className="text-center py-12">
+                  <Users className="w-10 h-10 text-slate-600 mx-auto mb-3" />
+                  <p className="text-slate-400 text-sm">No occupied rooms at the moment.</p>
+                </div>
+              ) : (
+                <div className="grid gap-3">
+                  {activeBookings.map((booking) => (
+                    <div
+                      key={booking.id}
+                      className="bg-slate-900/60 border border-slate-800 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:border-rose-500/35 transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-xl bg-rose-500/10 border border-rose-500/20 flex flex-col items-center justify-center shrink-0">
+                          <span className="text-sm font-black text-rose-400">{booking.room_number}</span>
+                          <span className="text-[8px] text-slate-500 font-bold uppercase tracking-wider">{booking.room_category}</span>
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="text-sm font-bold text-white truncate">{booking.guest_name}</h4>
+                          <p className="text-xs text-slate-400 font-medium truncate flex items-center gap-1.5 mt-0.5">
+                            <Phone className="w-3 h-3 text-slate-500" /> {booking.guest_phone}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs border-t sm:border-t-0 border-slate-800 pt-2 sm:pt-0">
+                        <div className="flex flex-col">
+                          <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Check-in</span>
+                          <span className="text-slate-300 font-semibold mt-0.5">
+                            {new Date(booking.check_in_time).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
+                          </span>
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Expected Out</span>
+                          <span className="text-slate-300 font-semibold mt-0.5">
+                            {booking.expected_check_out && booking.expected_check_out.startsWith('2099')
+                              ? 'Open Stay'
+                              : new Date(booking.expected_check_out).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
+                          </span>
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Rate/Night</span>
+                          <span className="text-rose-400 font-bold mt-0.5">₹{parseFloat(booking.room_rate).toLocaleString('en-IN')}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="border-t border-slate-800 px-5 py-4 flex justify-end bg-slate-950">
+              <button
+                onClick={() => setOccupiedModalOpen(false)}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs font-semibold rounded-xl transition-all"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -405,3 +405,36 @@ export const getActiveBookingByRoom = async (req, res) => {
     });
   }
 };
+
+// ─── GET /api/bookings/active ────────────────────────────────────────────────
+export const getActiveBookings = async (req, res) => {
+  const hotel_id = req.user.hotelId;
+
+  try {
+    const [rows] = await pool.execute(
+      `SELECT b.id, b.room_id, b.guest_id, b.check_in_time, b.expected_check_out, 
+              b.room_rate, b.total_amount, b.advance_paid, b.status,
+              g.full_name AS guest_name, g.phone_number AS guest_phone, g.address AS guest_address,
+              r.room_number, r.category AS room_category
+       FROM bookings b
+       JOIN guests g ON b.guest_id = g.id
+       JOIN rooms r ON b.room_id = r.id
+       WHERE b.hotel_id = ? AND b.status = 'Active'
+       ORDER BY r.room_number ASC`,
+      [hotel_id]
+    );
+
+    return res.status(200).json({
+      success: true,
+      count: rows.length,
+      bookings: rows,
+    });
+  } catch (error) {
+    console.error('[BookingController] getActiveBookings error:', error.message);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve active bookings.',
+    });
+  }
+};
+
