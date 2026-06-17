@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import api from '../../services/api.js';
 import { 
   Users, Plus, Edit, X, Loader2, Search, MapPin, Phone, 
   User, ExternalLink, FileText, Image as ImageIcon, AlertCircle, 
-  Check, Eye, EyeOff, ShieldCheck, Contact
+  Check, Eye, EyeOff, ShieldCheck, Contact, Camera
 } from 'lucide-react';
 import { isContactPickerSupported, pickContact } from '../../utils/contactPicker.js';
 
@@ -27,9 +27,90 @@ const Guests = () => {
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
   const [driveLink, setDriveLink] = useState('');
-  const [photoFile, setPhotoFile] = useState(null);
-  const [idFrontFile, setIdFrontFile] = useState(null);
-  const [idBackFile, setIdBackFile] = useState(null);
+  const [idFiles, setIdFiles] = useState(Array(5).fill(null));
+
+  // Camera states
+  const [cameraTarget, setCameraTarget]   = useState(null); // {type:'idSlot', index}
+  const [cameraStream, setCameraStream]   = useState(null);
+  const [facingMode, setFacingMode]       = useState('environment'); // 'user'=front | 'environment'=back
+  const videoRef  = useRef(null);
+  const canvasRef = useRef(null);
+
+  useEffect(() => () => { cameraStream?.getTracks().forEach(t => t.stop()); }, [cameraStream]);
+
+  const startCamera = async (target) => {
+    setFormError('');
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 400, height: 300, facingMode } });
+      setCameraStream(stream);
+      setCameraTarget(target);
+      setTimeout(() => { if (videoRef.current) videoRef.current.srcObject = stream; }, 100);
+    } catch { setFormError('Unable to access camera. Please check permissions.'); }
+  };
+
+  const switchCamera = async () => {
+    const newMode = facingMode === 'user' ? 'environment' : 'user';
+    setFacingMode(newMode);
+    if (cameraStream) {
+      cameraStream.getTracks().forEach(t => t.stop());
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: newMode } });
+        setCameraStream(stream);
+        if (videoRef.current) videoRef.current.srcObject = stream;
+      } catch { setFormError('Failed to switch camera.'); }
+    }
+  };
+
+  const stopCamera = () => {
+    cameraStream?.getTracks().forEach(t => t.stop());
+    setCameraStream(null);
+    setCameraTarget(null);
+  };
+
+  const capturePhoto = () => {
+    if (videoRef.current && canvasRef.current) {
+      const ctx = canvasRef.current.getContext('2d');
+      ctx.drawImage(videoRef.current, 0, 0, canvasRef.current.width, canvasRef.current.height);
+      canvasRef.current.toBlob(blob => {
+        if (blob) {
+          const file = new File([blob], `capture-${Date.now()}.png`, { type: 'image/png' });
+          if (cameraTarget.type === 'idSlot') {
+            setIdFiles(prev => prev.map((f, i) => i === cameraTarget.index ? file : f));
+          }
+          stopCamera();
+        }
+      }, 'image/png');
+    }
+  };
+
+  const getCameraLabel = () => {
+    if (!cameraTarget) return '';
+    if (cameraTarget.type === 'idSlot') return `ID Document ${cameraTarget.index + 1}`;
+    return '';
+  };
+
+  const handleMultipleIdsChange = (e) => {
+    const selectedFiles = Array.from(e.target.files);
+    if (selectedFiles.length > 0) {
+      setIdFiles(prev => {
+        const updated = [...prev];
+        let fileIdx = 0;
+        for (let i = 0; i < updated.length; i++) {
+          if (!updated[i] && fileIdx < selectedFiles.length) {
+            updated[i] = selectedFiles[fileIdx];
+            fileIdx++;
+          }
+        }
+        if (fileIdx < selectedFiles.length) {
+          for (let i = 0; i < updated.length && fileIdx < selectedFiles.length; i++) {
+            updated[i] = selectedFiles[fileIdx];
+            fileIdx++;
+          }
+        }
+        return updated;
+      });
+    }
+  };
 
   const [selectedGuest, setSelectedGuest] = useState(null);
   const [formLoading, setFormLoading] = useState(false);
@@ -98,9 +179,8 @@ const Guests = () => {
       formData.append('address', address.trim());
       formData.append('document_url', driveLink.trim());
       
-      if (photoFile) formData.append('guest_photo', photoFile);
-      if (idFrontFile) formData.append('id_front', idFrontFile);
-      if (idBackFile) formData.append('id_back', idBackFile);
+      const idFieldNames = ['id_front', 'id_back', 'id_3', 'id_4', 'id_5'];
+      idFiles.forEach((file, i) => { if (file) formData.append(idFieldNames[i], file); });
 
       await api.post('/guests', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
@@ -115,9 +195,7 @@ const Guests = () => {
       setPhone('');
       setAddress('');
       setDriveLink('');
-      setPhotoFile(null);
-      setIdFrontFile(null);
-      setIdBackFile(null);
+      setIdFiles(Array(5).fill(null));
     } catch (err) {
       console.error(err);
       setFormError(err.response?.data?.message || 'Failed to register guest.');
@@ -133,9 +211,13 @@ const Guests = () => {
     setPhone(guest.phone_number || '');
     setAddress(guest.address || '');
     setDriveLink(guest.document_url || '');
-    setPhotoFile(null);
-    setIdFrontFile(null);
-    setIdBackFile(null);
+    setIdFiles([
+      guest.id_front || null,
+      guest.id_back || null,
+      guest.id_3 || null,
+      guest.id_4 || null,
+      guest.id_5 || null
+    ]);
     setFormError('');
     setEditModalOpen(true);
   };
@@ -156,10 +238,12 @@ const Guests = () => {
       formData.append('phone_number', phone.trim());
       formData.append('address', address.trim());
       formData.append('document_url', driveLink.trim());
-
-      if (photoFile) formData.append('guest_photo', photoFile);
-      if (idFrontFile) formData.append('id_front', idFrontFile);
-      if (idBackFile) formData.append('id_back', idBackFile);
+      const idFieldNames = ['id_front', 'id_back', 'id_3', 'id_4', 'id_5'];
+      idFiles.forEach((file, i) => {
+        if (file && typeof file !== 'string') {
+          formData.append(idFieldNames[i], file);
+        }
+      });
 
       await api.put(`/guests/${selectedGuest.id}`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
@@ -215,9 +299,7 @@ const Guests = () => {
             setPhone('');
             setAddress('');
             setDriveLink('');
-            setPhotoFile(null);
-            setIdFrontFile(null);
-            setIdBackFile(null);
+            setIdFiles(Array(5).fill(null));
             setAddModalOpen(true);
           }}
           className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-semibold flex items-center gap-2 shadow-lg shadow-indigo-500/20 transition-all cursor-pointer"
@@ -463,28 +545,72 @@ const Guests = () => {
               <div className="border-t border-slate-800 pt-4 space-y-3">
                 <h3 className="text-xs font-bold text-indigo-400 uppercase tracking-wider">KYC Document Uploads (Optional)</h3>
                 
+                {cameraTarget && (
+                  <div className="bg-slate-950 border border-slate-800 rounded-xl p-3 space-y-3 mb-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider flex items-center gap-1.5">
+                        <Camera className="w-3.5 h-3.5 animate-pulse" />{getCameraLabel()}
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <button type="button" onClick={switchCamera}
+                          className="flex items-center gap-1 text-[10px] px-2 py-0.5 bg-slate-800 border border-slate-700 text-slate-300 rounded-lg font-bold transition-all">
+                          🔄 {facingMode === 'user' ? 'Front' : 'Back'}
+                        </button>
+                        <button type="button" onClick={stopCamera} className="text-slate-500 hover:text-white transition-colors">
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                    <div className="relative aspect-[4/3] w-full bg-slate-900 rounded-lg overflow-hidden border border-slate-800">
+                      <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
+                    </div>
+                    <div className="flex gap-2">
+                      <button type="button" onClick={stopCamera} className="flex-1 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-semibold">Cancel</button>
+                      <button type="button" onClick={capturePhoto} className="flex-1 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold">📸 Capture</button>
+                    </div>
+                  </div>
+                )}
 
-
-                {/* ID Front */}
-                <div>
-                  <label className="block text-[11px] font-semibold text-slate-400 mb-1">Government ID (Front Side)</label>
-                  <input 
-                    type="file" 
-                    accept="image/*,application/pdf"
-                    onChange={(e) => setIdFrontFile(e.target.files[0])}
-                    className="w-full text-xs text-slate-400 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-800 file:text-slate-200 hover:file:bg-slate-700 file:cursor-pointer cursor-pointer border border-slate-700 p-1.5 rounded-xl bg-slate-800/10"
-                  />
+                <div className="mb-3">
+                  <label className="w-full flex items-center justify-center gap-1.5 py-2 px-3 border border-dashed border-indigo-500/35 bg-indigo-500/5 hover:bg-indigo-500/10 text-indigo-400 rounded-xl text-xs font-bold cursor-pointer transition-all text-center">
+                    <Plus className="w-4 h-4" /> Select &amp; Upload Multiple IDs at once (Up to 5)
+                    <input
+                      type="file"
+                      multiple
+                      accept="image/*,application/pdf"
+                      onChange={handleMultipleIdsChange}
+                      className="hidden"
+                    />
+                  </label>
                 </div>
 
-                {/* ID Back */}
-                <div>
-                  <label className="block text-[11px] font-semibold text-slate-400 mb-1">Government ID (Back Side)</label>
-                  <input 
-                    type="file" 
-                    accept="image/*,application/pdf"
-                    onChange={(e) => setIdBackFile(e.target.files[0])}
-                    className="w-full text-xs text-slate-400 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-800 file:text-slate-200 hover:file:bg-slate-700 file:cursor-pointer cursor-pointer border border-slate-700 p-1.5 rounded-xl bg-slate-800/10"
-                  />
+                <div className="grid grid-cols-1 gap-3">
+                  {idFiles.map((file, idx) => (
+                    <div key={idx} className="space-y-1">
+                      <span className="text-[10px] text-slate-400 font-bold">
+                        ID {idx + 1}{idx === 0 ? ' (Front Side)' : idx === 1 ? ' (Back Side)' : ''}
+                      </span>
+                      {file ? (
+                        <div className="flex items-center gap-2 bg-emerald-500/5 border border-emerald-500/15 p-2 rounded-xl">
+                          <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                          <span className="text-[10px] text-slate-400 flex-1 truncate">{file.name}</span>
+                          <button type="button" onClick={() => setIdFiles(prev => prev.map((f, i) => i === idx ? null : f))} className="text-red-400 hover:text-red-300">
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex gap-2">
+                          <label className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 border border-slate-700 hover:bg-slate-800 text-slate-400 rounded-xl text-[10px] font-semibold cursor-pointer transition-colors">
+                            <Plus className="w-3 h-3" />Upload File
+                            <input type="file" accept="image/*,application/pdf" onChange={e => { if (e.target.files[0]) setIdFiles(prev => prev.map((f, i) => i === idx ? e.target.files[0] : f)); }} className="hidden" />
+                          </label>
+                          <button type="button" onClick={() => startCamera({ type: 'idSlot', index: idx })} className="flex items-center gap-1 py-1.5 px-3 bg-indigo-600/10 hover:bg-indigo-600/20 border border-indigo-500/20 text-indigo-400 rounded-xl text-[10px] font-bold transition-all">
+                            <Camera className="w-3 h-3" />Cam
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
                 </div>
               </div>
 
@@ -602,33 +728,111 @@ const Guests = () => {
                   <h3 className="text-xs font-bold text-indigo-400 uppercase tracking-wider">Update KYC Documents</h3>
                   <span className="text-[10px] text-slate-500 font-semibold">(Leave blank to keep existing files)</span>
                 </div>
-                
 
+                {cameraTarget && (
+                  <div className="bg-slate-950 border border-slate-800 rounded-xl p-3 space-y-3 mb-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider flex items-center gap-1.5">
+                        <Camera className="w-3.5 h-3.5 animate-pulse" />{getCameraLabel()}
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <button type="button" onClick={switchCamera}
+                          className="flex items-center gap-1 text-[10px] px-2 py-0.5 bg-slate-800 border border-slate-700 text-slate-300 rounded-lg font-bold transition-all">
+                          🔄 {facingMode === 'user' ? 'Front' : 'Back'}
+                        </button>
+                        <button type="button" onClick={stopCamera} className="text-slate-500 hover:text-white transition-colors">
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                    <div className="relative aspect-[4/3] w-full bg-slate-900 rounded-lg overflow-hidden border border-slate-800">
+                      <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
+                    </div>
+                    <div className="flex gap-2">
+                      <button type="button" onClick={stopCamera} className="flex-1 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-semibold">Cancel</button>
+                      <button type="button" onClick={capturePhoto} className="flex-1 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold">📸 Capture</button>
+                    </div>
+                  </div>
+                )}
 
-                {/* ID Front */}
-                <div>
-                  <label className="block text-[11px] font-semibold text-slate-400 mb-1">
-                    Government ID (Front Side) {selectedGuest?.id_front && <span className="text-emerald-400">(✓ Currently Uploaded)</span>}
+                <div className="mb-3">
+                  <label className="w-full flex items-center justify-center gap-1.5 py-2 px-3 border border-dashed border-indigo-500/35 bg-indigo-500/5 hover:bg-indigo-500/10 text-indigo-400 rounded-xl text-xs font-bold cursor-pointer transition-all text-center">
+                    <Plus className="w-4 h-4" /> Select &amp; Upload Multiple IDs at once (Up to 5)
+                    <input
+                      type="file"
+                      multiple
+                      accept="image/*,application/pdf"
+                      onChange={handleMultipleIdsChange}
+                      className="hidden"
+                    />
                   </label>
-                  <input 
-                    type="file" 
-                    accept="image/*,application/pdf"
-                    onChange={(e) => setIdFrontFile(e.target.files[0])}
-                    className="w-full text-xs text-slate-400 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-800 file:text-slate-200 hover:file:bg-slate-700 file:cursor-pointer cursor-pointer border border-slate-700 p-1.5 rounded-xl bg-slate-800/10"
-                  />
                 </div>
 
-                {/* ID Back */}
-                <div>
-                  <label className="block text-[11px] font-semibold text-slate-400 mb-1">
-                    Government ID (Back Side) {selectedGuest?.id_back && <span className="text-emerald-400">(✓ Currently Uploaded)</span>}
-                  </label>
-                  <input 
-                    type="file" 
-                    accept="image/*,application/pdf"
-                    onChange={(e) => setIdBackFile(e.target.files[0])}
-                    className="w-full text-xs text-slate-400 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-800 file:text-slate-200 hover:file:bg-slate-700 file:cursor-pointer cursor-pointer border border-slate-700 p-1.5 rounded-xl bg-slate-800/10"
-                  />
+                <div className="grid grid-cols-1 gap-3">
+                  {idFiles.map((file, idx) => (
+                    <div key={idx} className="space-y-1">
+                      <span className="text-[10px] text-slate-400 font-bold">
+                        ID {idx + 1}{idx === 0 ? ' (Front Side)' : idx === 1 ? ' (Back Side)' : ''}
+                      </span>
+                      {file ? (
+                        typeof file === 'string' ? (
+                          <div className="flex items-center gap-2 bg-slate-800 border border-slate-700 p-2 rounded-xl">
+                            <FileText className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                            <span className="text-[10px] text-slate-300 flex-1 truncate">Existing Document</span>
+                            <button
+                              type="button"
+                              onClick={() => triggerPreview(file, `Existing ID ${idx + 1}`)}
+                              className="text-indigo-400 hover:text-indigo-300 text-[10px] font-semibold flex items-center gap-0.5 cursor-pointer"
+                            >
+                              <Eye className="w-3 h-3" /> View
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setIdFiles(prev => prev.map((f, i) => i === idx ? null : f))}
+                              className="text-red-400 hover:text-red-300 cursor-pointer"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2 bg-emerald-500/5 border border-emerald-500/15 p-2 rounded-xl">
+                            <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                            <span className="text-[10px] text-slate-400 flex-1 truncate">{file.name}</span>
+                            <button
+                              type="button"
+                              onClick={() => setIdFiles(prev => prev.map((f, i) => i === idx ? null : f))}
+                              className="text-red-400 hover:text-red-300 cursor-pointer"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        )
+                      ) : (
+                        <div className="flex gap-2">
+                          <label className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 border border-slate-700 hover:bg-slate-800 text-slate-400 rounded-xl text-[10px] font-semibold cursor-pointer transition-colors">
+                            <Plus className="w-3 h-3" />Upload File
+                            <input
+                              type="file"
+                              accept="image/*,application/pdf"
+                              onChange={e => {
+                                if (e.target.files[0]) {
+                                  setIdFiles(prev => prev.map((f, i) => i === idx ? e.target.files[0] : f));
+                                }
+                              }}
+                              className="hidden"
+                            />
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => startCamera({ type: 'idSlot', index: idx })}
+                            className="flex items-center gap-1 py-1.5 px-3 bg-indigo-600/10 hover:bg-indigo-600/20 border border-indigo-500/20 text-indigo-400 rounded-xl text-[10px] font-bold transition-all cursor-pointer"
+                          >
+                            <Camera className="w-3 h-3" />Cam
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
                 </div>
               </div>
 
@@ -702,6 +906,7 @@ const Guests = () => {
           </div>
         </div>
       )}
+      <canvas ref={canvasRef} width="640" height="480" className="hidden" />
     </div>
   );
 };

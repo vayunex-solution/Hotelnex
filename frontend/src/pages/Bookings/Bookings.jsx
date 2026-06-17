@@ -255,6 +255,29 @@ const Bookings = () => {
     }
   };
 
+  const handleMultipleIdsChange = (e) => {
+    const selectedFiles = Array.from(e.target.files);
+    if (selectedFiles.length > 0) {
+      setIdFiles(prev => {
+        const updated = [...prev];
+        let fileIdx = 0;
+        for (let i = 0; i < updated.length; i++) {
+          if (!updated[i] && fileIdx < selectedFiles.length) {
+            updated[i] = selectedFiles[fileIdx];
+            fileIdx++;
+          }
+        }
+        if (fileIdx < selectedFiles.length) {
+          for (let i = 0; i < updated.length && fileIdx < selectedFiles.length; i++) {
+            updated[i] = selectedFiles[fileIdx];
+            fileIdx++;
+          }
+        }
+        return updated;
+      });
+    }
+  };
+
   const getCameraLabel = () => {
     if (!cameraTarget) return '';
     if (cameraTarget.type === 'photo') return 'Guest Photo';
@@ -331,7 +354,11 @@ const Bookings = () => {
     if (!selectedRoomId) { setFormError('Please select a room.'); return; }
     if (hasExpectedCheckout) {
       if (!expectedCheckout) { setFormError('Please select expected checkout date.'); return; }
-      if (new Date(expectedCheckout) <= new Date()) { setFormError('Expected checkout must be a future date.'); return; }
+      const checkOutDate = new Date(expectedCheckout);
+      checkOutDate.setHours(0,0,0,0);
+      const today = new Date();
+      today.setHours(0,0,0,0);
+      if (checkOutDate < today) { setFormError('Expected checkout cannot be in the past.'); return; }
     }
     if (!roomRate || isNaN(parseFloat(roomRate)) || parseFloat(roomRate) < 0) { setFormError('Invalid room rate.'); return; }
 
@@ -721,7 +748,7 @@ const Bookings = () => {
                       <span className="w-5 h-5 rounded-full bg-indigo-500 text-white text-[10px] font-black flex items-center justify-center">1</span>
                       <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">Guest Lookup</span>
                     </div>
-                    <button type="button" onClick={() => { setGuestFound(false); setGuestName(''); setGuestPhone(''); setGuestAddress(''); setGuestDriveLink(''); setPhotoFile(null); setIdFrontFile(null); setIdBackFile(null); setFormError(''); }}
+                    <button type="button" onClick={() => { setGuestFound(false); setGuestName(''); setGuestPhone(''); setGuestAddress(''); setGuestDriveLink(''); setPhotoFile(null); setIdFiles(Array(5).fill(null)); setFormError(''); }}
                       className="text-[10px] text-indigo-400 hover:text-indigo-300 font-bold flex items-center gap-1 cursor-pointer">
                       <Plus className="w-3 h-3" />New Guest
                     </button>
@@ -734,13 +761,6 @@ const Bookings = () => {
                         placeholder="Search by name or phone..."
                         className="w-full bg-slate-800/80 border border-slate-700 text-white text-sm rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:border-indigo-500 transition-all placeholder-slate-500" />
                     </div>
-                    {isContactPickerSupported() && (
-                      <button type="button" onClick={() => handleImportContact('guest')}
-                        className="px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl flex items-center justify-center transition-colors shrink-0"
-                        title="Import from contacts">
-                        <Contact className="w-4 h-4" />
-                      </button>
-                    )}
                     <button type="button" onClick={handleGuestLookup} disabled={searchingGuest || !searchQuery.trim()}
                       className="px-4 bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-900 text-white rounded-xl text-sm font-semibold flex items-center gap-1.5 transition-colors shrink-0">
                       {searchingGuest ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Find'}
@@ -764,19 +784,8 @@ const Bookings = () => {
                         </div>
                         <div>
                           <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Phone *</label>
-                          <div className="relative flex gap-2">
-                            <div className="relative flex-1">
-                              <input type="text" required value={guestPhone} onChange={e => setGuestPhone(e.target.value)} placeholder="Phone Number"
-                                className="w-full bg-slate-800/80 border border-slate-700 text-white text-xs rounded-xl px-3 py-2.5 focus:outline-none focus:border-indigo-500 transition-all" />
-                            </div>
-                            {!guestFound && isContactPickerSupported() && (
-                              <button type="button" onClick={() => handleImportContact('guest')}
-                                className="px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl flex items-center justify-center transition-colors shrink-0"
-                                title="Import from contacts">
-                                <Contact className="w-4 h-4" />
-                              </button>
-                            )}
-                          </div>
+                          <input type="text" required value={guestPhone} onChange={e => setGuestPhone(e.target.value)} placeholder="Phone Number"
+                            className="w-full bg-slate-800/80 border border-slate-700 text-white text-xs rounded-xl px-3 py-2.5 focus:outline-none focus:border-indigo-500 transition-all" />
                         </div>
                       </div>
                       <div>
@@ -829,11 +838,23 @@ const Bookings = () => {
 
                         <canvas ref={canvasRef} width="640" height="480" className="hidden" />
 
-
-
                         {/* ── 5 ID Document Slots ── */}
                         <div className="space-y-2">
                           <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">ID Documents <span className="text-indigo-400 font-black">(Min. 5 slots)</span></p>
+                          
+                          <div className="mb-3">
+                            <label className="w-full flex items-center justify-center gap-1.5 py-2.5 px-4 border border-dashed border-indigo-500/35 bg-indigo-500/5 hover:bg-indigo-500/10 text-indigo-400 rounded-xl text-xs font-bold cursor-pointer transition-all text-center">
+                              <Plus className="w-4 h-4" /> Select &amp; Upload Multiple IDs at once (Up to 5)
+                              <input
+                                type="file"
+                                multiple
+                                accept="image/*,application/pdf"
+                                onChange={handleMultipleIdsChange}
+                                className="hidden"
+                              />
+                            </label>
+                          </div>
+
                           {idFiles.map((file, idx) => (
                             <div key={idx}>
                               <p className="text-[9px] text-slate-600 font-semibold mb-1">

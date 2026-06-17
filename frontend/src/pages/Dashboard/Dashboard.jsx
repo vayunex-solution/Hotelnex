@@ -132,8 +132,7 @@ const Dashboard = () => {
   const [guestPhone, setGuestPhone]         = useState('');
   const [guestAddress, setGuestAddress]     = useState('');
   const [guestPhoto, setGuestPhoto]         = useState(null);
-  const [idFront, setIdFront]               = useState(null);
-  const [idBack, setIdBack]                 = useState(null);
+  const [idFiles, setIdFiles]               = useState(Array(5).fill(null));
 
   const [expectedCheckout, setExpectedCheckout] = useState('');
   const [roomRate, setRoomRate]                 = useState('');
@@ -174,6 +173,29 @@ const Dashboard = () => {
     }
   };
 
+  const handleMultipleIdsChange = (e) => {
+    const selectedFiles = Array.from(e.target.files);
+    if (selectedFiles.length > 0) {
+      setIdFiles(prev => {
+        const updated = [...prev];
+        let fileIdx = 0;
+        for (let i = 0; i < updated.length; i++) {
+          if (!updated[i] && fileIdx < selectedFiles.length) {
+            updated[i] = selectedFiles[fileIdx];
+            fileIdx++;
+          }
+        }
+        if (fileIdx < selectedFiles.length) {
+          for (let i = 0; i < updated.length && fileIdx < selectedFiles.length; i++) {
+            updated[i] = selectedFiles[fileIdx];
+            fileIdx++;
+          }
+        }
+        return updated;
+      });
+    }
+  };
+
   // ── Fetch ─────────────────────────────────────────────────────────────────
   const fetchDashboardData = useCallback(async () => {
     setLoading(true);
@@ -207,8 +229,7 @@ const Dashboard = () => {
     setGuestPhone('');
     setGuestAddress('');
     setGuestPhoto(null);
-    setIdFront(null);
-    setIdBack(null);
+    setIdFiles(Array(5).fill(null));
 
     if (room.status === 'Occupied') {
       setActiveTab('checkout');
@@ -259,7 +280,11 @@ const Dashboard = () => {
     setDrawerSuccess('');
 
     if (!expectedCheckout) { setDrawerError('Please select expected checkout date.'); return; }
-    if (new Date(expectedCheckout) <= new Date()) { setDrawerError('Expected checkout must be a future date.'); return; }
+    const checkOutDate = new Date(expectedCheckout);
+    checkOutDate.setHours(0,0,0,0);
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    if (checkOutDate < today) { setDrawerError('Expected checkout cannot be in the past.'); return; }
     if (!roomRate || isNaN(parseFloat(roomRate)) || parseFloat(roomRate) < 0) { setDrawerError('Invalid room rate.'); return; }
 
     setDrawerLoading(true);
@@ -274,8 +299,8 @@ const Dashboard = () => {
         fd.append('phone_number', guestPhone.trim());
         fd.append('address', guestAddress.trim());
         if (guestPhoto) fd.append('guest_photo', guestPhoto);
-        if (idFront) fd.append('id_front', idFront);
-        if (idBack) fd.append('id_back', idBack);
+        const idFieldNames = ['id_front', 'id_back', 'id_3', 'id_4', 'id_5'];
+        idFiles.forEach((file, i) => { if (file) fd.append(idFieldNames[i], file); });
         const res = await api.post('/guests', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
         finalGuestId = res.data.guest.id;
       }
@@ -610,17 +635,40 @@ const Dashboard = () => {
                         {/* KYC for new guests */}
                         {!guestFound && (
                           <div className="space-y-3 pt-2 border-t border-slate-700/50">
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 mb-1.5">
                               <ShieldCheck className="w-3.5 h-3.5 text-indigo-400" />KYC Documents (Optional)
                             </p>
-                            {[
-                              { label: 'Gov. ID Front', accept: 'image/*,application/pdf', onChange: (e) => setIdFront(e.target.files[0]) },
-                              { label: 'Gov. ID Back',  accept: 'image/*,application/pdf', onChange: (e) => setIdBack(e.target.files[0]) },
-                            ].map((f) => (
-                              <div key={f.label}>
-                                <label className="block text-[10px] font-semibold text-slate-500 mb-1">{f.label}</label>
-                                <input type="file" accept={f.accept} onChange={f.onChange}
-                                  className="w-full text-xs text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-800 file:text-slate-300 hover:file:bg-slate-700 file:cursor-pointer cursor-pointer border border-slate-700 p-1.5 rounded-xl bg-slate-800/10" />
+
+                            <div className="mb-2.5">
+                              <label className="w-full flex items-center justify-center gap-1 py-2 px-3 border border-dashed border-indigo-500/35 bg-indigo-500/5 hover:bg-indigo-500/10 text-indigo-400 rounded-xl text-[10px] font-bold cursor-pointer transition-all text-center">
+                                <Plus className="w-3.5 h-3.5" /> Upload Multiple IDs at once (Up to 5)
+                                <input
+                                  type="file"
+                                  multiple
+                                  accept="image/*,application/pdf"
+                                  onChange={handleMultipleIdsChange}
+                                  className="hidden"
+                                />
+                              </label>
+                            </div>
+
+                            {idFiles.map((file, idx) => (
+                              <div key={idx} className="space-y-1">
+                                <label className="block text-[10px] font-semibold text-slate-500">
+                                  ID {idx + 1}{idx === 0 ? ' (Front Side)' : idx === 1 ? ' (Back Side)' : ''}
+                                </label>
+                                {file ? (
+                                  <div className="flex items-center gap-2 bg-emerald-500/5 border border-emerald-500/15 p-2 rounded-xl">
+                                    <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                                    <span className="text-[10px] text-slate-400 flex-1 truncate">{file.name}</span>
+                                    <button type="button" onClick={() => setIdFiles(prev => prev.map((f, i) => i === idx ? null : f))} className="text-red-400 hover:text-red-300">
+                                      <X className="w-3 h-3" />
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <input type="file" accept="image/*,application/pdf" onChange={e => { if (e.target.files[0]) setIdFiles(prev => prev.map((f, i) => i === idx ? e.target.files[0] : f)); }}
+                                    className="w-full text-xs text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-800 file:text-slate-300 hover:file:bg-slate-700 file:cursor-pointer cursor-pointer border border-slate-700 p-1.5 rounded-xl bg-slate-800/10" />
+                                )}
                               </div>
                             ))}
                           </div>
