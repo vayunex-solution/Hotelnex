@@ -73,7 +73,7 @@ const InvoiceModal = ({ bookingId, onClose }) => {
     <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-[100] flex items-center justify-center">
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-10 flex flex-col items-center gap-4">
         <Loader2 className="w-10 h-10 text-indigo-400 animate-spin" />
-        <p className="text-slate-400 text-sm">Loading invoice…</p>
+        <p className="text-slate-400 text-sm">Loading record…</p>
       </div>
     </div>
   );
@@ -140,8 +140,8 @@ const InvoiceModal = ({ bookingId, onClose }) => {
                 <FileText className="w-4 h-4 text-indigo-400" />
               </div>
               <div>
-                <h2 className="text-sm font-bold text-white">Guest Registration Pad</h2>
-                <p className="text-[10px] text-indigo-400 font-semibold">{booking.invoice_id}</p>
+                <h2 className="text-sm font-bold text-white">Guest Physical Record</h2>
+                <p className="text-[10px] text-indigo-400 font-semibold">Ref: REC-{String(booking.id).padStart(5, '0')}</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -204,8 +204,8 @@ const InvoiceModal = ({ bookingId, onClose }) => {
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Registration Slip</p>
-                  <p className="text-lg font-black text-indigo-400 mt-0.5">{booking.invoice_id}</p>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Physical Record</p>
+                  <p className="text-lg font-black text-indigo-400 mt-0.5">Ref: REC-{String(booking.id).padStart(5, '0')}</p>
                   <p className="text-[10px] text-slate-500 mt-1">
                     Issued: {new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                   </p>

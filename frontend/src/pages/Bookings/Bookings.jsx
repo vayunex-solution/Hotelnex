@@ -143,7 +143,7 @@ const BookingCard = ({ booking, onCheckout, onPreview, onInvoice }) => {
             onClick={() => onInvoice(booking.id)}
             className="px-3 py-2 bg-indigo-500/15 border border-indigo-500/30 text-indigo-400 hover:bg-indigo-600 hover:text-white hover:border-indigo-600 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0"
           >
-            <Receipt className="w-3.5 h-3.5" />Invoice
+            <Receipt className="w-3.5 h-3.5" />Record
           </button>
           <button onClick={() => onCheckout(booking)}
             className="px-3.5 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-md shadow-rose-500/10 shrink-0">
@@ -775,7 +775,7 @@ const Bookings = () => {
                               onClick={() => setInvoiceBookingId(booking.id)}
                               className="inline-flex items-center gap-1.5 px-3 py-2 bg-indigo-500/15 border border-indigo-500/30 text-indigo-400 hover:bg-indigo-600 hover:text-white hover:border-indigo-600 rounded-xl text-xs font-bold transition-all"
                             >
-                              <Receipt className="w-3.5 h-3.5" />Invoice
+                              <Receipt className="w-3.5 h-3.5" />Record
                             </button>
                             <button onClick={() => { setSelectedBooking(booking); setFormError(''); setCheckoutModalOpen(true); }}
                               className="inline-flex items-center gap-1.5 px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold shadow-md shadow-rose-500/10 transition-all">
@@ -1291,7 +1291,7 @@ const Bookings = () => {
       )}
     </div>
 
-      {/* ── INVOICE MODAL ──────────────────────────────────────────── */}
+      {/* ── RECORD MODAL ──────────────────────────────────────────── */}
       {invoiceBookingId && (
         <InvoiceModal
           bookingId={invoiceBookingId}

@@ -89,7 +89,7 @@ const BookingHistory = () => {
   // ─── Export Excel (CSV UTF-8 BOM) ─────────────────────────────────────────
   const handleExportExcel = () => {
     const BOM = '\uFEFF';
-    const headers = ['Invoice ID','Guest Name','Phone','Room','Category','Check-in','Check-out','Nights','Room Rate','Total Amount','Advance Paid','Pending','Status'];
+    const headers = ['Record Ref','Guest Name','Phone','Room','Category','Check-in','Check-out','Nights','Room Rate','Total Amount','Advance Paid','Pending','Status'];
     const rows = filteredBookings.map(b => {
       const cin  = new Date(b.check_in_time);
       const isOpen = new Date(b.expected_check_out).getFullYear() >= 2099;
@@ -98,7 +98,7 @@ const BookingHistory = () => {
       const total   = parseFloat(b.total_amount || 0);
       const advance = parseFloat(b.advance_paid || 0);
       return [
-        `INV-${String(b.id).padStart(5,'0')}`,
+        `REC-${String(b.id).padStart(5,'0')}`,
         b.guest_name,
         b.guest_phone,
         `Room ${b.room_number}`,
@@ -386,12 +386,12 @@ const BookingHistory = () => {
                   </div>
                   {/* Card Footer – docs */}
                   <div className="px-4 pb-4 pt-2 border-t border-slate-800/60 flex items-center gap-2 flex-wrap">
-                    {/* Invoice Button */}
+                    {/* Record Button */}
                     <button
                       onClick={() => setInvoiceBookingId(booking.id)}
                       className="inline-flex items-center gap-1 px-2.5 py-1 bg-indigo-500/15 border border-indigo-500/30 text-indigo-400 rounded-lg text-[10px] font-bold hover:bg-indigo-500 hover:text-white transition-all"
                     >
-                      <Receipt className="w-3 h-3" />Invoice
+                      <Receipt className="w-3 h-3" />Record
                     </button>
                     {booking.guest_drive_link && (
                       <a href={booking.guest_drive_link} target="_blank" rel="noopener noreferrer"
@@ -450,7 +450,7 @@ const BookingHistory = () => {
                     <th className="px-5 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Financials</th>
                     <th className="px-5 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Documents</th>
                     <th className="px-5 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Status</th>
-                    <th className="px-5 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Invoice</th>
+                    <th className="px-5 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Record</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/80 text-sm">
@@ -576,13 +576,13 @@ const BookingHistory = () => {
                             {booking.status}
                           </span>
                         </td>
-                        {/* Invoice */}
+                        {/* Record */}
                         <td className="px-5 py-4 text-center">
                           <button
                             onClick={() => setInvoiceBookingId(booking.id)}
                             className="inline-flex items-center gap-1 px-3 py-1.5 bg-indigo-500/15 border border-indigo-500/30 text-indigo-400 rounded-lg text-[10px] font-bold hover:bg-indigo-600 hover:text-white hover:border-indigo-600 transition-all"
                           >
-                            <Receipt className="w-3 h-3" />Invoice
+                            <Receipt className="w-3 h-3" />Record
                           </button>
                         </td>
                       </tr>
@@ -680,7 +680,7 @@ const BookingHistory = () => {
         );
       })()}
 
-      {/* ── INVOICE MODAL ──────────────────────────────────────────────────── */}
+      {/* ── RECORD MODAL ──────────────────────────────────────────────────── */}
       {invoiceBookingId && (
         <InvoiceModal
           bookingId={invoiceBookingId}
