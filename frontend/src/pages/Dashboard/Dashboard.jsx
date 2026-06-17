@@ -140,6 +140,7 @@ const Dashboard = () => {
   const [activeBooking, setActiveBooking]       = useState(null);
 
   const [occupiedModalOpen, setOccupiedModalOpen] = useState(false);
+  const [availableModalOpen, setAvailableModalOpen] = useState(false);
   const [activeBookings, setActiveBookings] = useState([]);
   const [activeBookingsLoading, setActiveBookingsLoading] = useState(false);
   const [activeBookingsError, setActiveBookingsError] = useState('');
@@ -405,6 +406,8 @@ const Dashboard = () => {
               if (kpi.label === 'Occupied Rooms') {
                 setOccupiedModalOpen(true);
                 fetchActiveBookings();
+              } else if (kpi.label === 'Available Rooms') {
+                setAvailableModalOpen(true);
               } else {
                 navigate(kpi.to);
               }
@@ -929,6 +932,92 @@ const Dashboard = () => {
             <div className="border-t border-slate-800 px-5 py-4 flex justify-end bg-slate-950">
               <button
                 onClick={() => setOccupiedModalOpen(false)}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs font-semibold rounded-xl transition-all"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── AVAILABLE ROOMS MODAL ────────────────────────────────────────────── */}
+      {availableModalOpen && (
+        <div
+          className="fixed inset-0 bg-slate-950/75 backdrop-blur-sm z-40 flex items-center justify-center p-4 transition-opacity duration-300"
+          onClick={() => setAvailableModalOpen(false)}
+        >
+          <div
+            className="bg-slate-950 border border-slate-800 rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl transition-all duration-300 transform scale-100 opacity-100"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="border-b border-slate-800 px-5 py-4 flex items-center justify-between bg-slate-950">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/25 flex items-center justify-center shrink-0">
+                  <BedDouble className="w-5 h-5 text-emerald-400" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white">Available Rooms List</h3>
+                  <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">Rooms ready for check-in</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setAvailableModalOpen(false)}
+                className="w-9 h-9 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-400 hover:text-white transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="px-5 py-5 max-h-[60vh] overflow-y-auto space-y-4">
+              {rooms.filter(r => r.status === 'Available').length === 0 ? (
+                <div className="text-center py-12">
+                  <BedDouble className="w-10 h-10 text-slate-600 mx-auto mb-3" />
+                  <p className="text-slate-400 text-sm">No available rooms at the moment.</p>
+                </div>
+              ) : (
+                <div className="grid gap-3">
+                  {rooms.filter(r => r.status === 'Available').map((room) => (
+                    <div
+                      key={room.id}
+                      className="bg-slate-900/60 border border-slate-800 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:border-emerald-500/35 transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex flex-col items-center justify-center shrink-0">
+                          <span className="text-sm font-black text-emerald-400">{room.room_number}</span>
+                          <span className="text-[8px] text-slate-500 font-bold uppercase tracking-wider">ROOM</span>
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="text-sm font-bold text-white truncate">{room.category}</h4>
+                          <p className="text-xs text-slate-400 font-medium truncate flex items-center gap-1.5 mt-0.5">
+                            Rate/Night: ₹{parseFloat(room.base_rate).toLocaleString('en-IN')}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3 justify-between sm:justify-end border-t sm:border-t-0 border-slate-800 pt-2 sm:pt-0">
+                        <button
+                          onClick={() => {
+                            setAvailableModalOpen(false);
+                            handleRoomClick(room);
+                          }}
+                          className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl flex items-center gap-1 transition-all shadow-md shadow-emerald-600/10 cursor-pointer"
+                        >
+                          <LogIn className="w-3.5 h-3.5" /> Check-In
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="border-t border-slate-800 px-5 py-4 flex justify-end bg-slate-950">
+              <button
+                onClick={() => setAvailableModalOpen(false)}
                 className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs font-semibold rounded-xl transition-all"
               >
                 Close
