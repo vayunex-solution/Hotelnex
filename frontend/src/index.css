@@ -109,3 +109,29 @@ html:not(.dark) .group:hover .group-hover\:text-white { color: #0f172a; }
 /* ── Shadow overrides (lighter in light mode) ──────────────────── */
 html:not(.dark) .shadow-2xl { box-shadow: 0 25px 50px -12px rgba(0,0,0,0.10); }
 html:not(.dark) .shadow-xl  { box-shadow: 0 20px 25px -5px rgba(0,0,0,0.08); }
+
+/* ── Light Mode Contrast Fixes for Dark Backgrounds & Buttons ── */
+html:not(.dark) .bg-slate-950\/95 {
+  background-color: rgba(248, 250, 252, 0.95);
+}
+
+/* Force white text on primary buttons/links with dark backgrounds in light mode */
+html:not(.dark) button.bg-indigo-600,
+html:not(.dark) button.bg-indigo-600 *,
+html:not(.dark) button.bg-indigo-650,
+html:not(.dark) button.bg-indigo-650 *,
+html:not(.dark) button.bg-rose-600,
+html:not(.dark) button.bg-rose-600 *,
+html:not(.dark) button.bg-emerald-600,
+html:not(.dark) button.bg-emerald-600 *,
+html:not(.dark) a.bg-indigo-600,
+html:not(.dark) a.bg-indigo-600 *,
+html:not(.dark) a.bg-rose-600,
+html:not(.dark) a.bg-rose-600 *,
+html:not(.dark) a.bg-emerald-600,
+html:not(.dark) a.bg-emerald-600 *,
+html:not(.dark) a.bg-emerald-500,
+html:not(.dark) a.bg-emerald-500 * {
+  color: #ffffff !important;
+}
+
