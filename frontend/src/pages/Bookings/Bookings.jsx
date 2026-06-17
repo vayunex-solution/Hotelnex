@@ -5,8 +5,9 @@ import {
   User, Phone, MapPin, Calendar, Camera,
   Image as ImageIcon, FileText, ExternalLink, ShieldCheck,
   BedDouble, LogOut, IndianRupee, Clock, Zap, RefreshCw,
-  ArrowUpRight, Users
+  ArrowUpRight, Users, Contact
 } from 'lucide-react';
+import { isContactPickerSupported, pickContact } from '../../utils/contactPicker.js';
 
 // ─── Stat Mini Card ───────────────────────────────────────────────────────────
 const MiniStat = ({ label, value, sub, color }) => {
@@ -232,6 +233,26 @@ const Bookings = () => {
     cameraStream?.getTracks().forEach(t => t.stop());
     setCameraStream(null);
     setCameraTarget(null);
+  };
+
+  const handleImportContact = async (targetField = 'guest') => {
+    try {
+      const contact = await pickContact();
+      if (contact) {
+        if (targetField === 'guest') {
+          setSearchQuery(contact.phone);
+          setGuestName(contact.name);
+          setGuestPhone(contact.phone);
+        } else if (typeof targetField === 'number') {
+          updateCompanion(targetField, 'name', contact.name);
+          updateCompanion(targetField, 'phone', contact.phone);
+        }
+      }
+    } catch (err) {
+      if (err.name !== 'AbortError') {
+        setFormError(err.message || 'Failed to select contact.');
+      }
+    }
   };
 
   const getCameraLabel = () => {
@@ -713,6 +734,13 @@ const Bookings = () => {
                         placeholder="Search by name or phone..."
                         className="w-full bg-slate-800/80 border border-slate-700 text-white text-sm rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:border-indigo-500 transition-all placeholder-slate-500" />
                     </div>
+                    {isContactPickerSupported() && (
+                      <button type="button" onClick={() => handleImportContact('guest')}
+                        className="px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl flex items-center justify-center transition-colors shrink-0"
+                        title="Import from contacts">
+                        <Contact className="w-4 h-4" />
+                      </button>
+                    )}
                     <button type="button" onClick={handleGuestLookup} disabled={searchingGuest || !searchQuery.trim()}
                       className="px-4 bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-900 text-white rounded-xl text-sm font-semibold flex items-center gap-1.5 transition-colors shrink-0">
                       {searchingGuest ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Find'}
@@ -736,8 +764,19 @@ const Bookings = () => {
                         </div>
                         <div>
                           <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Phone *</label>
-                          <input type="text" required value={guestPhone} onChange={e => setGuestPhone(e.target.value)} placeholder="Phone Number"
-                            className="w-full bg-slate-800/80 border border-slate-700 text-white text-xs rounded-xl px-3 py-2.5 focus:outline-none focus:border-indigo-500 transition-all" />
+                          <div className="relative flex gap-2">
+                            <div className="relative flex-1">
+                              <input type="text" required value={guestPhone} onChange={e => setGuestPhone(e.target.value)} placeholder="Phone Number"
+                                className="w-full bg-slate-800/80 border border-slate-700 text-white text-xs rounded-xl px-3 py-2.5 focus:outline-none focus:border-indigo-500 transition-all" />
+                            </div>
+                            {!guestFound && isContactPickerSupported() && (
+                              <button type="button" onClick={() => handleImportContact('guest')}
+                                className="px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl flex items-center justify-center transition-colors shrink-0"
+                                title="Import from contacts">
+                                <Contact className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
                       <div>
@@ -863,13 +902,22 @@ const Bookings = () => {
                                   <X className="w-3.5 h-3.5" />
                                 </button>
                               </div>
-                              <div className="grid grid-cols-2 gap-2">
+                              <div className="flex gap-2">
                                 <input value={comp.name} onChange={e => updateCompanion(ci, 'name', e.target.value)}
                                   placeholder="Full Name *"
-                                  className="bg-slate-800/80 border border-slate-700 text-white text-[10px] rounded-xl px-3 py-2 focus:outline-none focus:border-violet-500 transition-all" />
-                                <input value={comp.phone} onChange={e => updateCompanion(ci, 'phone', e.target.value)}
-                                  placeholder="Phone *"
-                                  className="bg-slate-800/80 border border-slate-700 text-white text-[10px] rounded-xl px-3 py-2 focus:outline-none focus:border-violet-500 transition-all" />
+                                  className="flex-1 bg-slate-800/80 border border-slate-700 text-white text-[10px] rounded-xl px-3 py-2 focus:outline-none focus:border-violet-500 transition-all" />
+                                <div className="flex-1 relative flex gap-2">
+                                  <input value={comp.phone} onChange={e => updateCompanion(ci, 'phone', e.target.value)}
+                                    placeholder="Phone *"
+                                    className="flex-1 bg-slate-800/80 border border-slate-700 text-white text-[10px] rounded-xl px-3 py-2 focus:outline-none focus:border-violet-500 transition-all" />
+                                  {isContactPickerSupported() && (
+                                    <button type="button" onClick={() => handleImportContact(ci)}
+                                      className="px-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl flex items-center justify-center transition-colors shrink-0"
+                                      title="Import from contacts">
+                                      <Contact className="w-3.5 h-3.5" />
+                                    </button>
+                                  )}
+                                </div>
                               </div>
                               {/* Companion ID slots (3) */}
                               <div className="space-y-1.5">

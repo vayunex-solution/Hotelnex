@@ -3,8 +3,9 @@ import api from '../../services/api.js';
 import { 
   Users, Plus, Edit, X, Loader2, Search, MapPin, Phone, 
   User, ExternalLink, FileText, Image as ImageIcon, AlertCircle, 
-  Check, Eye, EyeOff, ShieldCheck
+  Check, Eye, EyeOff, ShieldCheck, Contact
 } from 'lucide-react';
+import { isContactPickerSupported, pickContact } from '../../utils/contactPicker.js';
 
 const Guests = () => {
   const [guests, setGuests] = useState([]);
@@ -33,6 +34,20 @@ const Guests = () => {
   const [selectedGuest, setSelectedGuest] = useState(null);
   const [formLoading, setFormLoading] = useState(false);
   const [formError, setFormError] = useState('');
+
+  const handleImportContact = async () => {
+    try {
+      const contact = await pickContact();
+      if (contact) {
+        setFullName(contact.name);
+        setPhone(contact.phone);
+      }
+    } catch (err) {
+      if (err.name !== 'AbortError') {
+        setFormError(err.message || 'Failed to select contact.');
+      }
+    }
+  };
 
   // ─── Fetch Guests ──────────────────────────────────────────────────────────
   const fetchGuests = useCallback(async (searchQuery = '') => {
@@ -400,16 +415,25 @@ const Guests = () => {
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-400 mb-1.5">Phone Number *</label>
-                  <div className="relative">
-                    <Phone className="absolute left-3 top-3.5 w-4.5 h-4.5 text-slate-500" />
-                    <input 
-                      type="text" 
-                      required
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      placeholder="e.g. 9876543210"
-                      className="w-full bg-slate-800/60 border border-slate-700 text-white text-sm rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:border-indigo-500"
-                    />
+                  <div className="relative flex gap-2">
+                    <div className="relative flex-1">
+                      <Phone className="absolute left-3 top-3.5 w-4.5 h-4.5 text-slate-500" />
+                      <input 
+                        type="text" 
+                        required
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        placeholder="e.g. 9876543210"
+                        className="w-full bg-slate-800/60 border border-slate-700 text-white text-sm rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:border-indigo-500"
+                      />
+                    </div>
+                    {isContactPickerSupported() && (
+                      <button type="button" onClick={handleImportContact}
+                        className="px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl flex items-center justify-center transition-colors shrink-0"
+                        title="Import from contacts">
+                        <Contact className="w-4.5 h-4.5" />
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -537,16 +561,25 @@ const Guests = () => {
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-400 mb-1.5">Phone Number *</label>
-                  <div className="relative">
-                    <Phone className="absolute left-3 top-3.5 w-4.5 h-4.5 text-slate-500" />
-                    <input 
-                      type="text" 
-                      required
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      placeholder="e.g. 9876543210"
-                      className="w-full bg-slate-800/60 border border-slate-700 text-white text-sm rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:border-indigo-500"
-                    />
+                  <div className="relative flex gap-2">
+                    <div className="relative flex-1">
+                      <Phone className="absolute left-3 top-3.5 w-4.5 h-4.5 text-slate-500" />
+                      <input 
+                        type="text" 
+                        required
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        placeholder="e.g. 9876543210"
+                        className="w-full bg-slate-800/60 border border-slate-700 text-white text-sm rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:border-indigo-500"
+                      />
+                    </div>
+                    {isContactPickerSupported() && (
+                      <button type="button" onClick={handleImportContact}
+                        className="px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl flex items-center justify-center transition-colors shrink-0"
+                        title="Import from contacts">
+                        <Contact className="w-4.5 h-4.5" />
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>

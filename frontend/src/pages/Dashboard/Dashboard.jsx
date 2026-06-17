@@ -6,8 +6,9 @@ import {
   DollarSign, Calendar, Phone, MapPin, User, FileText,
   AlertCircle, RefreshCw, TrendingUp, Users, ArrowDownCircle,
   ArrowUpCircle, ShieldCheck, IndianRupee, LogIn, LogOut,
-  Clock, Zap, ChevronRight, Image as ImageIcon
+  Clock, Zap, ChevronRight, Image as ImageIcon, Contact
 } from 'lucide-react';
+import { isContactPickerSupported, pickContact } from '../../utils/contactPicker.js';
 
 // ─── KPI Card ────────────────────────────────────────────────────────────────
 const KpiCard = ({ label, value, sub, icon: Icon, color, loading, onClick }) => {
@@ -155,6 +156,21 @@ const Dashboard = () => {
       setActiveBookingsError('Failed to fetch active bookings.');
     } finally {
       setActiveBookingsLoading(false);
+    }
+  };
+
+  const handleImportContact = async () => {
+    try {
+      const contact = await pickContact();
+      if (contact) {
+        setSearchPhone(contact.phone);
+        setFullName(contact.name);
+        setGuestPhone(contact.phone);
+      }
+    } catch (err) {
+      if (err.name !== 'AbortError') {
+        setDrawerError(err.message || 'Failed to select contact.');
+      }
     }
   };
 
@@ -527,6 +543,13 @@ const Dashboard = () => {
                           className="w-full bg-slate-800/80 border border-slate-700 text-white text-sm rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:border-indigo-500 transition-all placeholder-slate-500"
                         />
                       </div>
+                      {isContactPickerSupported() && (
+                        <button type="button" onClick={handleImportContact}
+                          className="px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl flex items-center justify-center transition-colors shrink-0"
+                          title="Import from contacts">
+                          <Contact className="w-4 h-4" />
+                        </button>
+                      )}
                       <button type="button" onClick={handleGuestSearch} disabled={searchingGuest || !searchPhone.trim()}
                         className="px-4 bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-900 text-white rounded-xl text-sm font-semibold flex items-center gap-1.5 transition-colors shrink-0">
                         {searchingGuest ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
@@ -558,11 +581,20 @@ const Dashboard = () => {
                         </div>
                         <div>
                           <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Phone Number</label>
-                          <div className="relative">
-                            <Phone className="absolute left-3 top-3.5 w-4 h-4 text-slate-500" />
-                            <input type="text" required disabled={!!guestFound} value={guestPhone} onChange={(e) => setGuestPhone(e.target.value)}
-                              placeholder="Phone Number"
-                              className="w-full bg-slate-800/60 border border-slate-700 text-white text-sm rounded-xl pl-9 pr-4 py-3 focus:outline-none focus:border-indigo-500 disabled:opacity-60 disabled:cursor-not-allowed transition-all" />
+                          <div className="relative flex gap-2">
+                            <div className="relative flex-1">
+                              <Phone className="absolute left-3 top-3.5 w-4 h-4 text-slate-500" />
+                              <input type="text" required disabled={!!guestFound} value={guestPhone} onChange={(e) => setGuestPhone(e.target.value)}
+                                placeholder="Phone Number"
+                                className="w-full bg-slate-800/60 border border-slate-700 text-white text-sm rounded-xl pl-9 pr-4 py-3 focus:outline-none focus:border-indigo-500 disabled:opacity-60 disabled:cursor-not-allowed transition-all" />
+                            </div>
+                            {!guestFound && isContactPickerSupported() && (
+                              <button type="button" onClick={handleImportContact}
+                                className="px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl flex items-center justify-center transition-colors shrink-0"
+                                title="Import from contacts">
+                                <Contact className="w-4 h-4" />
+                              </button>
+                            )}
                           </div>
                         </div>
                         <div>
