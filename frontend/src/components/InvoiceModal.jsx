@@ -149,51 +149,46 @@ const InvoiceModal = ({ bookingId, onClose }) => {
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-full max-w-2xl rounded-2xl shadow-2xl flex flex-col overflow-hidden my-auto">
           
           {/* Modal Header */}
-          <div className="no-print flex items-center justify-between px-5 py-4 border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md shrink-0">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-indigo-500/15 border border-indigo-500/25 flex items-center justify-center">
-                <FileText className="w-4 h-4 text-indigo-400" />
+          <div className="no-print flex flex-col sm:flex-row sm:items-center justify-between px-5 sm:px-6 py-4 sm:py-5 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 gap-4 sm:gap-0">
+            <div className="flex items-center gap-3.5">
+              <div className="w-11 h-11 rounded-xl bg-indigo-50 dark:bg-indigo-500/15 border border-indigo-100 dark:border-indigo-500/25 flex items-center justify-center shrink-0">
+                <FileText className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
               </div>
               <div>
-                <h2 className="text-sm font-bold text-slate-900 dark:text-white">Guest Physical Record</h2>
-                <p className="text-[10px] text-indigo-400 font-semibold">Ref: REC-{String(booking.id).padStart(5, '0')}</p>
+                <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white leading-tight">Guest Physical Record</h2>
+                <p className="text-xs text-indigo-600 dark:text-indigo-400 font-bold mt-0.5">Ref: REC-{String(booking.id).padStart(5, '0')}</p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2.5 self-end sm:self-auto w-full sm:w-auto justify-end">
               <button onClick={handleDownload}
-                className="flex items-center gap-2 px-3 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white rounded-xl text-xs font-semibold transition-all">
-                <Download className="w-3.5 h-3.5" /> Save PDF
+                className="flex items-center gap-2 px-4 py-2.5 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white rounded-xl text-sm font-semibold transition-all whitespace-nowrap">
+                <Download className="w-4 h-4 shrink-0" /> <span className="hidden sm:inline">Save PDF</span>
               </button>
               <button onClick={handlePrint}
-                className="flex items-center gap-2 px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition-all shadow-lg shadow-indigo-500/25">
-                <Printer className="w-3.5 h-3.5" /> Print
+                className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-bold transition-all shadow-lg shadow-indigo-500/20 whitespace-nowrap">
+                <Printer className="w-4 h-4 shrink-0" /> Print
               </button>
+              <div className="w-px h-8 bg-slate-200 dark:bg-slate-700 mx-1 hidden sm:block"></div>
               <button onClick={onClose}
-                className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors">
-                <X className="w-4 h-4" />
+                className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors shrink-0">
+                <X className="w-5 h-5 shrink-0" />
               </button>
             </div>
           </div>
-
           {/* Print Toggles */}
-          <div className="no-print px-5 py-3 border-b border-slate-200 dark:border-slate-800/60 bg-slate-50 dark:bg-slate-800/30 flex flex-wrap items-center gap-4">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Blank fields for hand-writing:</p>
-            <button
-              onClick={() => setBlankCheckin(v => !v)}
-              className="flex items-center gap-1.5 text-xs font-medium text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors"
-            >
-              {blankCheckin ? <CheckSquare className="w-4 h-4 text-indigo-400" /> : <Square className="w-4 h-4 text-slate-500" />}
-              Check-in Time
-            </button>
-            <button
-              onClick={() => setBlankCheckout(v => !v)}
-              className="flex items-center gap-1.5 text-xs font-medium text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors"
-            >
-              {blankCheckout ? <CheckSquare className="w-4 h-4 text-indigo-400" /> : <Square className="w-4 h-4 text-slate-500" />}
-              Check-out Time/Date
-            </button>
+          <div className="no-print px-5 sm:px-6 py-3 border-b border-slate-200 dark:border-slate-800/60 bg-slate-50/50 dark:bg-slate-800/30 flex flex-wrap items-center gap-x-5 gap-y-3">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5"><Square className="w-3.5 h-3.5" /> Blank fields for hand-writing:</p>
+            <div className="flex flex-wrap items-center gap-4">
+              <button onClick={() => setBlankCheckin(v => !v)}
+                className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+                {blankCheckin ? <CheckSquare className="w-4 h-4 text-indigo-500" /> : <Square className="w-4 h-4 text-slate-400" />} Check-in Time
+              </button>
+              <button onClick={() => setBlankCheckout(v => !v)}
+                className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+                {blankCheckout ? <CheckSquare className="w-4 h-4 text-indigo-500" /> : <Square className="w-4 h-4 text-slate-400" />} Check-out Time/Date
+              </button>
+            </div>
           </div>
-
           {/* ── PRINTABLE CARD ──────────────────────────────────────────── */}
           <div className="overflow-y-auto flex-1">
             <div ref={printRef} className="printable-invoice p-6 sm:p-8 space-y-5 text-slate-800 dark:text-slate-100">
