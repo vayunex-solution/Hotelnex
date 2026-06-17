@@ -187,6 +187,70 @@ const Bookings = () => {
   const [advancePaid, setAdvancePaid]             = useState('0');
   const [formLoading, setFormLoading]             = useState(false);
   const [formError, setFormError]                 = useState('');
+  const [showDraftBanner, setShowDraftBanner]     = useState(false);
+
+  // Check on mount if draft exists
+  useEffect(() => {
+    const saved = localStorage.getItem('bookings_checkin_draft');
+    if (saved) {
+      setShowDraftBanner(true);
+    }
+  }, []);
+
+  // Auto-save draft whenever check-in form details change
+  useEffect(() => {
+    if (checkinModalOpen) {
+      const hasData = searchQuery || guestName || guestPhone || guestAddress || guestDriveLink || selectedRoomId || expectedCheckout || companions.length > 0 || roomRate || (advancePaid && advancePaid !== '0');
+      if (hasData) {
+        const draft = {
+          searchQuery,
+          guestFound,
+          guestName,
+          guestPhone,
+          guestAddress,
+          guestDriveLink,
+          selectedRoomId,
+          expectedCheckout,
+          hasExpectedCheckout,
+          roomRate,
+          advancePaid,
+          companions: companions.map(c => ({ name: c.name, phone: c.phone }))
+        };
+        localStorage.setItem('bookings_checkin_draft', JSON.stringify(draft));
+      }
+    }
+  }, [checkinModalOpen, searchQuery, guestFound, guestName, guestPhone, guestAddress, guestDriveLink, selectedRoomId, expectedCheckout, hasExpectedCheckout, roomRate, advancePaid, companions]);
+
+  const handleRestoreDraft = () => {
+    const saved = localStorage.getItem('bookings_checkin_draft');
+    if (saved) {
+      try {
+        const draft = JSON.parse(saved);
+        setSearchQuery(draft.searchQuery || '');
+        setGuestFound(draft.guestFound);
+        setGuestName(draft.guestName || '');
+        setGuestPhone(draft.guestPhone || '');
+        setGuestAddress(draft.guestAddress || '');
+        setGuestDriveLink(draft.guestDriveLink || '');
+        setSelectedRoomId(draft.selectedRoomId || '');
+        setExpectedCheckout(draft.expectedCheckout || '');
+        setHasExpectedCheckout(draft.hasExpectedCheckout !== undefined ? draft.hasExpectedCheckout : true);
+        setRoomRate(draft.roomRate || '');
+        setAdvancePaid(draft.advancePaid || '0');
+        setCompanions((draft.companions || []).map(c => ({ name: c.name, phone: c.phone, idFiles: Array(3).fill(null) })));
+        setCheckinModalOpen(true);
+      } catch (e) {
+        console.error('Failed to restore draft', e);
+      }
+    }
+    setShowDraftBanner(false);
+  };
+
+  const handleDiscardDraft = () => {
+    localStorage.removeItem('bookings_checkin_draft');
+    setShowDraftBanner(false);
+  };
+
 
   // ── Fetch ─────────────────────────────────────────────────────────────────
   const fetchActiveBookings = useCallback(async () => {
@@ -403,6 +467,8 @@ const Bookings = () => {
         room_rate: parseFloat(roomRate), advance_paid: parseFloat(advancePaid) || 0,
         companion_ids: companionGuestIds
       });
+      localStorage.removeItem('bookings_checkin_draft');
+      setShowDraftBanner(false);
       setSuccess('✓ Check-in created successfully!');
       setCheckinModalOpen(false);
       fetchActiveBookings(); fetchRooms();
@@ -1175,6 +1241,34 @@ const Bookings = () => {
           </div>
         );
       })()}
+      {/* Draft Recovery Banner */}
+      {showDraftBanner && (
+        <div className="fixed bottom-4 right-4 left-4 sm:left-auto sm:w-96 bg-slate-900/95 backdrop-blur-md border border-slate-800 rounded-2xl p-4 shadow-2xl z-50 animate-in slide-in-from-bottom duration-300">
+          <div className="flex items-start gap-3">
+            <span className="text-xl">📝</span>
+            <div className="flex-1 min-w-0">
+              <h4 className="text-xs font-bold text-white uppercase tracking-wider">Draft Check-In Found</h4>
+              <p className="text-[11px] text-slate-400 mt-1">You have unsaved check-in details. Would you like to restore them?</p>
+              <div className="flex gap-2 mt-3">
+                <button
+                  type="button"
+                  onClick={handleRestoreDraft}
+                  className="flex-1 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-[10px] font-bold transition-all shadow-md shadow-indigo-600/10 cursor-pointer"
+                >
+                  Restore Draft
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDiscardDraft}
+                  className="flex-1 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-lg text-[10px] font-semibold transition-colors cursor-pointer"
+                >
+                  Start Fresh
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

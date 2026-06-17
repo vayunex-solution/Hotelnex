@@ -152,6 +152,71 @@ const Dashboard = () => {
 
   useEffect(() => () => { cameraStream?.getTracks().forEach(t => t.stop()); }, [cameraStream]);
 
+  const [showDraftBanner, setShowDraftBanner] = useState(false);
+
+  // Check on mount if draft exists
+  useEffect(() => {
+    const saved = localStorage.getItem('dashboard_checkin_draft');
+    if (saved) {
+      setShowDraftBanner(true);
+    }
+  }, []);
+
+  // Auto-save draft whenever check-in drawer details change
+  useEffect(() => {
+    if (drawerOpen && activeTab === 'checkin' && selectedRoom) {
+      const hasData = searchPhone || fullName || guestPhone || guestAddress || guestDriveLink || expectedCheckout || companions.length > 0 || roomRate || (advancePaid && advancePaid !== '0');
+      if (hasData) {
+        const draft = {
+          searchPhone,
+          guestFound,
+          fullName,
+          guestPhone,
+          guestAddress,
+          guestDriveLink,
+          selectedRoom,
+          expectedCheckout,
+          hasExpectedCheckout,
+          roomRate,
+          advancePaid,
+          companions: companions.map(c => ({ name: c.name, phone: c.phone }))
+        };
+        localStorage.setItem('dashboard_checkin_draft', JSON.stringify(draft));
+      }
+    }
+  }, [drawerOpen, activeTab, selectedRoom, searchPhone, guestFound, fullName, guestPhone, guestAddress, guestDriveLink, expectedCheckout, hasExpectedCheckout, roomRate, advancePaid, companions]);
+
+  const handleRestoreDraft = () => {
+    const saved = localStorage.getItem('dashboard_checkin_draft');
+    if (saved) {
+      try {
+        const draft = JSON.parse(saved);
+        setSearchPhone(draft.searchPhone || '');
+        setGuestFound(draft.guestFound);
+        setFullName(draft.fullName || '');
+        setGuestPhone(draft.guestPhone || '');
+        setGuestAddress(draft.guestAddress || '');
+        setGuestDriveLink(draft.guestDriveLink || '');
+        setSelectedRoom(draft.selectedRoom || null);
+        setExpectedCheckout(draft.expectedCheckout || '');
+        setHasExpectedCheckout(draft.hasExpectedCheckout !== undefined ? draft.hasExpectedCheckout : true);
+        setRoomRate(draft.roomRate || '');
+        setAdvancePaid(draft.advancePaid || '0');
+        setCompanions((draft.companions || []).map(c => ({ name: c.name, phone: c.phone, idFiles: Array(3).fill(null) })));
+        setActiveTab('checkin');
+        setDrawerOpen(true);
+      } catch (e) {
+        console.error('Failed to restore dashboard draft', e);
+      }
+    }
+    setShowDraftBanner(false);
+  };
+
+  const handleDiscardDraft = () => {
+    localStorage.removeItem('dashboard_checkin_draft');
+    setShowDraftBanner(false);
+  };
+
   const [occupiedModalOpen, setOccupiedModalOpen] = useState(false);
   const [availableModalOpen, setAvailableModalOpen] = useState(false);
   const [activeBookings, setActiveBookings] = useState([]);
@@ -425,6 +490,8 @@ const Dashboard = () => {
         advance_paid: parseFloat(advancePaid) || 0,
         companion_ids: companionGuestIds
       });
+      localStorage.removeItem('dashboard_checkin_draft');
+      setShowDraftBanner(false);
       setDrawerSuccess('✓ Check-in successful! Room is now occupied.');
       setTimeout(() => { handleCloseDrawer(); fetchDashboardData(); }, 1600);
     } catch (err) {
@@ -1232,6 +1299,34 @@ const Dashboard = () => {
               >
                 Close
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Draft Recovery Banner */}
+      {showDraftBanner && (
+        <div className="fixed bottom-4 right-4 left-4 sm:left-auto sm:w-96 bg-slate-900/95 backdrop-blur-md border border-slate-800 rounded-2xl p-4 shadow-2xl z-50 animate-in slide-in-from-bottom duration-300">
+          <div className="flex items-start gap-3">
+            <span className="text-xl">📝</span>
+            <div className="flex-1 min-w-0">
+              <h4 className="text-xs font-bold text-white uppercase tracking-wider">Draft Check-In Found</h4>
+              <p className="text-[11px] text-slate-400 mt-1">You have unsaved check-in details. Would you like to restore them?</p>
+              <div className="flex gap-2 mt-3">
+                <button
+                  type="button"
+                  onClick={handleRestoreDraft}
+                  className="flex-1 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-[10px] font-bold transition-all shadow-md shadow-indigo-600/10 cursor-pointer"
+                >
+                  Restore Draft
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDiscardDraft}
+                  className="flex-1 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-lg text-[10px] font-semibold transition-colors cursor-pointer"
+                >
+                  Start Fresh
+                </button>
+              </div>
             </div>
           </div>
         </div>

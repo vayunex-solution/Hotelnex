@@ -115,6 +115,53 @@ const Guests = () => {
   const [selectedGuest, setSelectedGuest] = useState(null);
   const [formLoading, setFormLoading] = useState(false);
   const [formError, setFormError] = useState('');
+  const [showDraftBanner, setShowDraftBanner] = useState(false);
+
+  // Check on mount if draft exists
+  useEffect(() => {
+    const saved = localStorage.getItem('guests_add_draft');
+    if (saved) {
+      setShowDraftBanner(true);
+    }
+  }, []);
+
+  // Auto-save draft whenever new guest form details change
+  useEffect(() => {
+    if (addModalOpen) {
+      const hasData = fullName || phone || address || driveLink;
+      if (hasData) {
+        const draft = {
+          fullName,
+          phone,
+          address,
+          driveLink
+        };
+        localStorage.setItem('guests_add_draft', JSON.stringify(draft));
+      }
+    }
+  }, [addModalOpen, fullName, phone, address, driveLink]);
+
+  const handleRestoreDraft = () => {
+    const saved = localStorage.getItem('guests_add_draft');
+    if (saved) {
+      try {
+        const draft = JSON.parse(saved);
+        setFullName(draft.fullName || '');
+        setPhone(draft.phone || '');
+        setAddress(draft.address || '');
+        setDriveLink(draft.driveLink || '');
+        setAddModalOpen(true);
+      } catch (e) {
+        console.error('Failed to restore guests draft', e);
+      }
+    }
+    setShowDraftBanner(false);
+  };
+
+  const handleDiscardDraft = () => {
+    localStorage.removeItem('guests_add_draft');
+    setShowDraftBanner(false);
+  };
 
   const handleImportContact = async () => {
     try {
@@ -186,6 +233,8 @@ const Guests = () => {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
 
+      localStorage.removeItem('guests_add_draft');
+      setShowDraftBanner(false);
       setSuccess('Guest profile registered successfully!');
       setAddModalOpen(false);
       fetchGuests(searchTerm);
@@ -902,6 +951,34 @@ const Guests = () => {
                   className="max-w-full max-h-full object-contain rounded-xl shadow-lg border border-slate-800"
                 />
               )}
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Draft Recovery Banner */}
+      {showDraftBanner && (
+        <div className="fixed bottom-4 right-4 left-4 sm:left-auto sm:w-96 bg-slate-900/95 backdrop-blur-md border border-slate-800 rounded-2xl p-4 shadow-2xl z-50 animate-in slide-in-from-bottom duration-300">
+          <div className="flex items-start gap-3">
+            <span className="text-xl">📝</span>
+            <div className="flex-1 min-w-0">
+              <h4 className="text-xs font-bold text-white uppercase tracking-wider">Draft Guest Profile Found</h4>
+              <p className="text-[11px] text-slate-400 mt-1">You have unsaved new guest details. Would you like to restore them?</p>
+              <div className="flex gap-2 mt-3">
+                <button
+                  type="button"
+                  onClick={handleRestoreDraft}
+                  className="flex-1 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-[10px] font-bold transition-all shadow-md shadow-indigo-600/10 cursor-pointer"
+                >
+                  Restore Draft
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDiscardDraft}
+                  className="flex-1 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-lg text-[10px] font-semibold transition-colors cursor-pointer"
+                >
+                  Start Fresh
+                </button>
+              </div>
             </div>
           </div>
         </div>
