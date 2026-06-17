@@ -957,7 +957,7 @@ const Guests = () => {
       )}
       {/* Draft Recovery Banner */}
       {showDraftBanner && (
-        <div className="fixed bottom-4 right-4 left-4 sm:left-auto sm:w-96 bg-slate-900/95 backdrop-blur-md border border-slate-800 rounded-2xl p-4 shadow-2xl z-50 animate-in slide-in-from-bottom duration-300">
+        <div className="fixed bottom-4 right-4 left-4 sm:left-auto sm:w-96 bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-2xl z-50 animate-in slide-in-from-bottom duration-300">
           <div className="flex items-start gap-3">
             <span className="text-xl">📝</span>
             <div className="flex-1 min-w-0">
