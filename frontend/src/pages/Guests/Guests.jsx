@@ -463,16 +463,7 @@ const Guests = () => {
               <div className="border-t border-slate-800 pt-4 space-y-3">
                 <h3 className="text-xs font-bold text-indigo-400 uppercase tracking-wider">KYC Document Uploads (Optional)</h3>
                 
-                {/* Photo */}
-                <div>
-                  <label className="block text-[11px] font-semibold text-slate-400 mb-1">Guest Photo</label>
-                  <input 
-                    type="file" 
-                    accept="image/*"
-                    onChange={(e) => setPhotoFile(e.target.files[0])}
-                    className="w-full text-xs text-slate-400 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-800 file:text-slate-200 hover:file:bg-slate-700 file:cursor-pointer cursor-pointer border border-slate-700 p-1.5 rounded-xl bg-slate-800/10"
-                  />
-                </div>
+
 
                 {/* ID Front */}
                 <div>
@@ -612,18 +603,7 @@ const Guests = () => {
                   <span className="text-[10px] text-slate-500 font-semibold">(Leave blank to keep existing files)</span>
                 </div>
                 
-                {/* Photo */}
-                <div>
-                  <label className="block text-[11px] font-semibold text-slate-400 mb-1">
-                    Guest Photo {selectedGuest?.guest_photo && <span className="text-emerald-400">(✓ Currently Uploaded)</span>}
-                  </label>
-                  <input 
-                    type="file" 
-                    accept="image/*"
-                    onChange={(e) => setPhotoFile(e.target.files[0])}
-                    className="w-full text-xs text-slate-400 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-800 file:text-slate-200 hover:file:bg-slate-700 file:cursor-pointer cursor-pointer border border-slate-700 p-1.5 rounded-xl bg-slate-800/10"
-                  />
-                </div>
+
 
                 {/* ID Front */}
                 <div>

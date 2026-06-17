@@ -614,7 +614,6 @@ const Dashboard = () => {
                               <ShieldCheck className="w-3.5 h-3.5 text-indigo-400" />KYC Documents (Optional)
                             </p>
                             {[
-                              { label: 'Guest Photo', accept: 'image/*', onChange: (e) => setGuestPhoto(e.target.files[0]) },
                               { label: 'Gov. ID Front', accept: 'image/*,application/pdf', onChange: (e) => setIdFront(e.target.files[0]) },
                               { label: 'Gov. ID Back',  accept: 'image/*,application/pdf', onChange: (e) => setIdBack(e.target.files[0]) },
                             ].map((f) => (
