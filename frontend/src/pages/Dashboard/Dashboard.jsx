@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api.js';
 import {
@@ -6,7 +6,8 @@ import {
   DollarSign, Calendar, Phone, MapPin, User, FileText,
   AlertCircle, RefreshCw, TrendingUp, Users, ArrowDownCircle,
   ArrowUpCircle, ShieldCheck, IndianRupee, LogIn, LogOut,
-  Clock, Zap, ChevronRight, Image as ImageIcon, Contact
+  Clock, Zap, ChevronRight, Image as ImageIcon, Contact,
+  Plus, Camera, ExternalLink
 } from 'lucide-react';
 import { isContactPickerSupported, pickContact } from '../../utils/contactPicker.js';
 
@@ -131,13 +132,25 @@ const Dashboard = () => {
   const [fullName, setFullName]             = useState('');
   const [guestPhone, setGuestPhone]         = useState('');
   const [guestAddress, setGuestAddress]     = useState('');
-  const [guestPhoto, setGuestPhoto]         = useState(null);
+  const [guestDriveLink, setGuestDriveLink] = useState('');
+  const [photoFile, setPhotoFile]           = useState(null);
   const [idFiles, setIdFiles]               = useState(Array(5).fill(null));
+  const [companions, setCompanions]         = useState([]);
+
+  // Camera states
+  const [cameraTarget, setCameraTarget]   = useState(null); // {type:'photo'|'idSlot'|'companionId', index?, compIndex?, idIndex?}
+  const [cameraStream, setCameraStream]   = useState(null);
+  const [facingMode, setFacingMode]       = useState('environment'); // 'user'=front | 'environment'=back
+  const videoRef  = useRef(null);
+  const canvasRef = useRef(null);
 
   const [expectedCheckout, setExpectedCheckout] = useState('');
+  const [hasExpectedCheckout, setHasExpectedCheckout] = useState(true);
   const [roomRate, setRoomRate]                 = useState('');
   const [advancePaid, setAdvancePaid]           = useState('0');
   const [activeBooking, setActiveBooking]       = useState(null);
+
+  useEffect(() => () => { cameraStream?.getTracks().forEach(t => t.stop()); }, [cameraStream]);
 
   const [occupiedModalOpen, setOccupiedModalOpen] = useState(false);
   const [availableModalOpen, setAvailableModalOpen] = useState(false);
@@ -229,8 +242,12 @@ const Dashboard = () => {
     setFullName('');
     setGuestPhone('');
     setGuestAddress('');
-    setGuestPhoto(null);
+    setGuestDriveLink('');
+    setPhotoFile(null);
     setIdFiles(Array(5).fill(null));
+    setCompanions([]);
+    setHasExpectedCheckout(true);
+    setCameraTarget(null);
 
     if (room.status === 'Occupied') {
       setActiveTab('checkout');
@@ -247,7 +264,11 @@ const Dashboard = () => {
     }
   };
 
-  const handleCloseDrawer = () => { setDrawerOpen(false); setSelectedRoom(null); };
+  const handleCloseDrawer = () => {
+    stopCamera();
+    setDrawerOpen(false);
+    setSelectedRoom(null);
+  };
 
   // ── Guest Search ──────────────────────────────────────────────────────────
   const handleGuestSearch = async () => {
@@ -262,17 +283,89 @@ const Dashboard = () => {
         setFullName(res.data.guest.full_name);
         setGuestPhone(res.data.guest.phone_number);
         setGuestAddress(res.data.guest.address || '');
+        setGuestDriveLink(res.data.guest.document_url || '');
       } else {
         setGuestFound(false);
         const term = searchPhone.trim();
         if (/^\+?[0-9\s\-]+$/.test(term)) { setGuestPhone(term); setFullName(''); }
         else { setFullName(term); setGuestPhone(''); }
         setGuestAddress('');
+        setGuestDriveLink('');
         setDrawerError('No existing guest found. Please fill the profile below.');
       }
     } catch { setDrawerError('Error searching guest profiles.'); }
     finally { setSearchingGuest(false); }
   };
+
+  // ── Camera Helpers ────────────────────────────────────────────────────────
+  const startCamera = async (target) => {
+    setDrawerError('');
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 400, height: 300, facingMode } });
+      setCameraStream(stream);
+      setCameraTarget(target);
+      setTimeout(() => { if (videoRef.current) videoRef.current.srcObject = stream; }, 100);
+    } catch { setDrawerError('Unable to access camera. Please check permissions.'); }
+  };
+
+  const switchCamera = async () => {
+    const newMode = facingMode === 'user' ? 'environment' : 'user';
+    setFacingMode(newMode);
+    if (cameraStream) {
+      cameraStream.getTracks().forEach(t => t.stop());
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: newMode } });
+        setCameraStream(stream);
+        if (videoRef.current) videoRef.current.srcObject = stream;
+      } catch { setDrawerError('Failed to switch camera.'); }
+    }
+  };
+
+  const stopCamera = () => {
+    cameraStream?.getTracks().forEach(t => t.stop());
+    setCameraStream(null);
+    setCameraTarget(null);
+  };
+
+  const getCameraLabel = () => {
+    if (!cameraTarget) return '';
+    if (cameraTarget.type === 'photo') return 'Guest Photo';
+    if (cameraTarget.type === 'idSlot') return `ID Document ${cameraTarget.index + 1}`;
+    if (cameraTarget.type === 'companionId') return `Companion ${cameraTarget.compIndex + 1} — ID ${cameraTarget.idIndex + 1}`;
+    return '';
+  };
+
+  const capturePhoto = () => {
+    if (videoRef.current && canvasRef.current) {
+      const ctx = canvasRef.current.getContext('2d');
+      ctx.drawImage(videoRef.current, 0, 0, canvasRef.current.width, canvasRef.current.height);
+      canvasRef.current.toBlob(blob => {
+        if (blob) {
+          const file = new File([blob], `capture-${Date.now()}.png`, { type: 'image/png' });
+          if (cameraTarget.type === 'photo') {
+            setPhotoFile(file);
+          } else if (cameraTarget.type === 'idSlot') {
+            setIdFiles(prev => prev.map((f, i) => i === cameraTarget.index ? file : f));
+          } else if (cameraTarget.type === 'companionId') {
+            setCompanions(prev => prev.map((c, ci) =>
+              ci === cameraTarget.compIndex
+                ? { ...c, idFiles: c.idFiles.map((f, ii) => ii === cameraTarget.idIndex ? file : f) }
+                : c
+            ));
+          }
+          stopCamera();
+        }
+      }, 'image/png');
+    }
+  };
+
+  // ── Companion Helpers ─────────────────────────────────────────────────────
+  const addCompanion    = () => setCompanions(prev => [...prev, { name: '', phone: '', idFiles: Array(3).fill(null) }]);
+  const removeCompanion = (i) => setCompanions(prev => prev.filter((_, idx) => idx !== i));
+  const updateCompanion = (i, field, val) => setCompanions(prev => prev.map((c, idx) => idx === i ? { ...c, [field]: val } : c));
+  const updateCompanionId = (ci, ii, file) => setCompanions(prev => prev.map((c, idx) =>
+    idx === ci ? { ...c, idFiles: c.idFiles.map((f, fIdx) => fIdx === ii ? file : f) } : c
+  ));
 
   // ── Check-In ──────────────────────────────────────────────────────────────
   const handleCheckInSubmit = async (e) => {
@@ -280,34 +373,57 @@ const Dashboard = () => {
     setDrawerError('');
     setDrawerSuccess('');
 
-    if (!expectedCheckout) { setDrawerError('Please select expected checkout date.'); return; }
-    const checkOutDate = new Date(expectedCheckout);
-    checkOutDate.setHours(0,0,0,0);
-    const today = new Date();
-    today.setHours(0,0,0,0);
-    if (checkOutDate < today) { setDrawerError('Expected checkout cannot be in the past.'); return; }
+    if (hasExpectedCheckout) {
+      if (!expectedCheckout) { setDrawerError('Please select expected checkout date.'); return; }
+      const checkOutDate = new Date(expectedCheckout);
+      checkOutDate.setHours(0,0,0,0);
+      const today = new Date();
+      today.setHours(0,0,0,0);
+      if (checkOutDate < today) { setDrawerError('Expected checkout cannot be in the past.'); return; }
+    }
     if (!roomRate || isNaN(parseFloat(roomRate)) || parseFloat(roomRate) < 0) { setDrawerError('Invalid room rate.'); return; }
 
     setDrawerLoading(true);
     try {
       let finalGuestId = null;
-      if (guestFound && guestFound.id) {
-        finalGuestId = guestFound.id;
+      const fd = new FormData();
+      fd.append('full_name', fullName.trim());
+      fd.append('phone_number', guestPhone.trim());
+      fd.append('address', guestAddress.trim());
+      fd.append('document_url', guestDriveLink.trim());
+      if (photoFile) fd.append('guest_photo', photoFile);
+      const idFieldNames = ['id_front', 'id_back', 'id_3', 'id_4', 'id_5'];
+      idFiles.forEach((file, i) => { if (file) fd.append(idFieldNames[i], file); });
+
+      if (guestFound?.id) {
+        const res = await api.put(`/guests/${guestFound.id}`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+        finalGuestId = res.data.guest.id;
       } else {
         if (!fullName.trim() || !guestPhone.trim()) { setDrawerError('Guest name and phone are required.'); setDrawerLoading(false); return; }
-        const fd = new FormData();
-        fd.append('full_name', fullName.trim());
-        fd.append('phone_number', guestPhone.trim());
-        fd.append('address', guestAddress.trim());
-        if (guestPhoto) fd.append('guest_photo', guestPhoto);
-        const idFieldNames = ['id_front', 'id_back', 'id_3', 'id_4', 'id_5'];
-        idFiles.forEach((file, i) => { if (file) fd.append(idFieldNames[i], file); });
         const res = await api.post('/guests', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
         finalGuestId = res.data.guest.id;
       }
+
+      // Register companion guests
+      const companionGuestIds = [];
+      for (const comp of companions) {
+        if (!comp.name.trim() || !comp.phone.trim()) continue;
+        const cfd = new FormData();
+        cfd.append('full_name', comp.name.trim());
+        cfd.append('phone_number', comp.phone.trim());
+        const cIdNames = ['id_front', 'id_back', 'id_3'];
+        comp.idFiles.forEach((file, i) => { if (file) cfd.append(cIdNames[i], file); });
+        const cRes = await api.post('/guests', cfd, { headers: { 'Content-Type': 'multipart/form-data' } });
+        companionGuestIds.push(cRes.data.guest.id);
+      }
+
       await api.post('/bookings/checkin', {
-        room_id: selectedRoom.id, guest_id: finalGuestId,
-        expected_checkout: expectedCheckout, room_rate: parseFloat(roomRate), advance_paid: parseFloat(advancePaid) || 0,
+        room_id: selectedRoom.id,
+        guest_id: finalGuestId,
+        expected_checkout: hasExpectedCheckout ? expectedCheckout : null,
+        room_rate: parseFloat(roomRate),
+        advance_paid: parseFloat(advancePaid) || 0,
+        companion_ids: companionGuestIds
       });
       setDrawerSuccess('✓ Check-in successful! Room is now occupied.');
       setTimeout(() => { handleCloseDrawer(); fetchDashboardData(); }, 1600);
@@ -554,22 +670,25 @@ const Dashboard = () => {
               {/* ── CHECK-IN FORM ─────────────────────────────────── */}
               {activeTab === 'checkin' && selectedRoom?.status !== 'Maintenance' && (
                 <form onSubmit={handleCheckInSubmit} className="space-y-5 pb-6">
-                  {/* Step 1: Guest search */}
+                  {/* Step 1: Guest Lookup */}
                   <div className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <span className="w-5 h-5 rounded-full bg-indigo-500 text-white text-[10px] font-black flex items-center justify-center shrink-0">1</span>
-                      <h4 className="text-xs font-bold uppercase tracking-wider text-slate-300">Guest Identification</h4>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="w-5 h-5 rounded-full bg-indigo-500 text-white text-[10px] font-black flex items-center justify-center">1</span>
+                        <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">Guest Lookup</span>
+                      </div>
+                      <button type="button" onClick={() => { setGuestFound(false); setFullName(''); setGuestPhone(''); setGuestAddress(''); setGuestDriveLink(''); setPhotoFile(null); setIdFiles(Array(5).fill(null)); setCompanions([]); setDrawerError(''); }}
+                        className="text-[10px] text-indigo-400 hover:text-indigo-300 font-bold flex items-center gap-1 cursor-pointer">
+                        <Plus className="w-3.5 h-3.5" />New Guest
+                      </button>
                     </div>
                     <div className="flex gap-2">
                       <div className="relative flex-1">
-                        <Search className="absolute left-3.5 top-3.5 w-4 h-4 text-slate-500" />
-                        <input
-                          type="text" value={searchPhone}
-                          onChange={(e) => setSearchPhone(e.target.value)}
-                          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleGuestSearch(); } }}
-                          placeholder="Name or phone number..."
-                          className="w-full bg-slate-800/80 border border-slate-700 text-white text-sm rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:border-indigo-500 transition-all placeholder-slate-500"
-                        />
+                        <Search className="absolute left-3 top-3.5 w-4 h-4 text-slate-500" />
+                        <input type="text" value={searchPhone} onChange={e => setSearchPhone(e.target.value)}
+                          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleGuestSearch(); } }}
+                          placeholder="Search by name or phone..."
+                          className="w-full bg-slate-800/80 border border-slate-700 text-white text-sm rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:border-indigo-500 transition-all placeholder-slate-500" />
                       </div>
                       {isContactPickerSupported() && (
                         <button type="button" onClick={handleImportContact}
@@ -580,71 +699,85 @@ const Dashboard = () => {
                       )}
                       <button type="button" onClick={handleGuestSearch} disabled={searchingGuest || !searchPhone.trim()}
                         className="px-4 bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-900 text-white rounded-xl text-sm font-semibold flex items-center gap-1.5 transition-colors shrink-0">
-                        {searchingGuest ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-                        Find
+                        {searchingGuest ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Find'}
                       </button>
                     </div>
                   </div>
 
-                  {/* Guest info panel */}
+                  {/* Guest profile panel */}
                   {guestFound !== null && (
                     <div className={`border rounded-2xl overflow-hidden ${guestFound ? 'border-emerald-500/25 bg-emerald-500/5' : 'border-blue-500/25 bg-blue-500/5'}`}>
                       <div className={`px-4 py-2.5 border-b flex items-center justify-between ${guestFound ? 'border-emerald-500/20' : 'border-blue-500/20'}`}>
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                          {guestFound ? 'Verified Guest Profile' : 'New Guest Registration'}
-                        </span>
-                        <span className={`text-[9px] font-black px-2 py-0.5 rounded-full ${guestFound ? 'bg-emerald-500/15 text-emerald-400' : 'bg-blue-500/15 text-blue-400'}`}>
-                          {guestFound ? '✓ Found' : '+ New'}
-                        </span>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{guestFound ? 'Verified Guest' : 'New Guest Registration'}</span>
+                        <span className={`text-[9px] font-black px-2 py-0.5 rounded-full ${guestFound ? 'bg-emerald-500/15 text-emerald-400' : 'bg-blue-500/15 text-blue-400'}`}>{guestFound ? '✓ Found' : '+ New'}</span>
                       </div>
                       <div className="p-4 space-y-3">
-                        <div>
-                          <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Full Name</label>
-                          <div className="relative">
-                            <User className="absolute left-3 top-3.5 w-4 h-4 text-slate-500" />
-                            <input type="text" required disabled={!!guestFound} value={fullName} onChange={(e) => setFullName(e.target.value)}
-                              placeholder="Guest Full Name"
-                              className="w-full bg-slate-800/60 border border-slate-700 text-white text-sm rounded-xl pl-9 pr-4 py-3 focus:outline-none focus:border-indigo-500 disabled:opacity-60 disabled:cursor-not-allowed transition-all" />
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Full Name *</label>
+                            <input type="text" required value={fullName} onChange={e => setFullName(e.target.value)} placeholder="Full Name"
+                              className="w-full bg-slate-800/80 border border-slate-700 text-white text-xs rounded-xl px-3 py-2.5 focus:outline-none focus:border-indigo-500 transition-all" />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Phone *</label>
+                            <input type="text" required value={guestPhone} onChange={e => setGuestPhone(e.target.value)} placeholder="Phone Number"
+                              className="w-full bg-slate-800/80 border border-slate-700 text-white text-xs rounded-xl px-3 py-2.5 focus:outline-none focus:border-indigo-500 transition-all" />
                           </div>
                         </div>
                         <div>
-                          <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Phone Number</label>
-                          <div className="relative flex gap-2">
-                            <div className="relative flex-1">
-                              <Phone className="absolute left-3 top-3.5 w-4 h-4 text-slate-500" />
-                              <input type="text" required disabled={!!guestFound} value={guestPhone} onChange={(e) => setGuestPhone(e.target.value)}
-                                placeholder="Phone Number"
-                                className="w-full bg-slate-800/60 border border-slate-700 text-white text-sm rounded-xl pl-9 pr-4 py-3 focus:outline-none focus:border-indigo-500 disabled:opacity-60 disabled:cursor-not-allowed transition-all" />
-                            </div>
-                            {!guestFound && isContactPickerSupported() && (
-                              <button type="button" onClick={handleImportContact}
-                                className="px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl flex items-center justify-center transition-colors shrink-0"
-                                title="Import from contacts">
-                                <Contact className="w-4 h-4" />
-                              </button>
-                            )}
-                          </div>
+                          <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Address</label>
+                          <input type="text" value={guestAddress} onChange={e => setGuestAddress(e.target.value)} placeholder="City, Country"
+                            className="w-full bg-slate-800/80 border border-slate-700 text-white text-xs rounded-xl px-3 py-2.5 focus:outline-none focus:border-indigo-500 transition-all" />
                         </div>
                         <div>
-                          <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Home Address</label>
-                          <div className="relative">
-                            <MapPin className="absolute left-3 top-3.5 w-4 h-4 text-slate-500" />
-                            <input type="text" disabled={!!guestFound} value={guestAddress} onChange={(e) => setGuestAddress(e.target.value)}
-                              placeholder="City, Country"
-                              className="w-full bg-slate-800/60 border border-slate-700 text-white text-sm rounded-xl pl-9 pr-4 py-3 focus:outline-none focus:border-indigo-500 disabled:opacity-60 disabled:cursor-not-allowed transition-all" />
-                          </div>
+                          <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Google Drive Link</label>
+                          <input type="url" value={guestDriveLink} onChange={e => setGuestDriveLink(e.target.value)} placeholder="https://drive.google.com/..."
+                            className="w-full bg-slate-800/80 border border-slate-700 text-white text-xs rounded-xl px-3 py-2.5 focus:outline-none focus:border-indigo-500 transition-all" />
                         </div>
 
-                        {/* KYC for new guests */}
-                        {!guestFound && (
-                          <div className="space-y-3 pt-2 border-t border-slate-700/50">
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 mb-1.5">
-                              <ShieldCheck className="w-3.5 h-3.5 text-indigo-400" />KYC Documents (Optional)
+                        {/* ── KYC Section ── */}
+                        <div className="space-y-3 pt-2.5 border-t border-slate-800">
+                          <div className="flex items-center justify-between">
+                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                              <ShieldCheck className="w-3.5 h-3.5 text-indigo-400" />KYC Documents
                             </p>
+                            {guestFound && <span className="text-[10px] text-slate-600 italic">Blank = keep existing</span>}
+                          </div>
 
-                            <div className="mb-2.5">
-                              <label className="w-full flex items-center justify-center gap-1 py-2 px-3 border border-dashed border-indigo-500/35 bg-indigo-500/5 hover:bg-indigo-500/10 text-indigo-400 rounded-xl text-[10px] font-bold cursor-pointer transition-all text-center">
-                                <Plus className="w-3.5 h-3.5" /> Upload Multiple IDs at once (Up to 5)
+                          {/* ── Live Camera Panel ── */}
+                          {cameraTarget && (
+                            <div className="bg-slate-950 border border-slate-800/80 rounded-xl p-3 space-y-3">
+                              <div className="flex items-center justify-between">
+                                <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider flex items-center gap-1.5">
+                                  <Camera className="w-3.5 h-3.5 animate-pulse" />{getCameraLabel()}
+                                </span>
+                                <div className="flex items-center gap-2">
+                                  <button type="button" onClick={switchCamera}
+                                    className="flex items-center gap-1 text-[10px] px-2.5 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded-lg font-bold transition-all">
+                                    🔄 {facingMode === 'user' ? 'Front Cam' : 'Back Cam'}
+                                  </button>
+                                  <button type="button" onClick={stopCamera} className="text-slate-500 hover:text-white transition-colors">
+                                    <X className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              </div>
+                              <div className="relative aspect-[4/3] w-full bg-slate-900 rounded-lg overflow-hidden border border-slate-800">
+                                <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
+                              </div>
+                              <div className="flex gap-2">
+                                <button type="button" onClick={stopCamera} className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-semibold transition-colors">Cancel</button>
+                                <button type="button" onClick={capturePhoto} className="flex-1 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold transition-all shadow-md shadow-indigo-600/10">📸 Capture</button>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* ── 5 ID Document Slots ── */}
+                          <div className="space-y-2">
+                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">ID Documents <span className="text-indigo-400 font-black">(Min. 5 slots)</span></p>
+                            
+                            <div className="mb-3">
+                              <label className="w-full flex items-center justify-center gap-1.5 py-2.5 px-3 border border-dashed border-indigo-500/35 bg-indigo-500/5 hover:bg-indigo-500/10 text-indigo-400 rounded-xl text-xs font-bold cursor-pointer transition-all text-center">
+                                <Plus className="w-4 h-4" /> Select &amp; Upload Multiple IDs at once (Up to 5)
                                 <input
                                   type="file"
                                   multiple
@@ -656,60 +789,136 @@ const Dashboard = () => {
                             </div>
 
                             {idFiles.map((file, idx) => (
-                              <div key={idx} className="space-y-1">
-                                <label className="block text-[10px] font-semibold text-slate-500">
-                                  ID {idx + 1}{idx === 0 ? ' (Front Side)' : idx === 1 ? ' (Back Side)' : ''}
-                                </label>
+                              <div key={idx}>
+                                <p className="text-[9px] text-slate-600 font-semibold mb-1">
+                                  ID {idx + 1}{idx === 0 ? ' · Primary Front' : idx === 1 ? ' · Primary Back' : ''}
+                                </p>
                                 {file ? (
                                   <div className="flex items-center gap-2 bg-emerald-500/5 border border-emerald-500/15 p-2 rounded-xl">
-                                    <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                                    <Check className="w-3 h-3 text-emerald-400 shrink-0" />
                                     <span className="text-[10px] text-slate-400 flex-1 truncate">{file.name}</span>
-                                    <button type="button" onClick={() => setIdFiles(prev => prev.map((f, i) => i === idx ? null : f))} className="text-red-400 hover:text-red-300">
-                                      <X className="w-3 h-3" />
-                                    </button>
+                                    <button type="button" onClick={() => setIdFiles(prev => prev.map((f, i) => i === idx ? null : f))} className="text-red-400 hover:text-red-300"><X className="w-3 h-3" /></button>
                                   </div>
                                 ) : (
-                                  <input type="file" accept="image/*,application/pdf" onChange={e => { if (e.target.files[0]) setIdFiles(prev => prev.map((f, i) => i === idx ? e.target.files[0] : f)); }}
-                                    className="w-full text-xs text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-800 file:text-slate-300 hover:file:bg-slate-700 file:cursor-pointer cursor-pointer border border-slate-700 p-1.5 rounded-xl bg-slate-800/10" />
+                                  <div className="flex gap-1.5">
+                                    <label className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 border border-slate-700 hover:bg-slate-800 text-slate-400 rounded-xl text-[10px] font-semibold cursor-pointer transition-colors">
+                                      <Plus className="w-3 h-3" />Upload File
+                                      <input type="file" accept="image/*,application/pdf" onChange={e => { if (e.target.files[0]) setIdFiles(prev => prev.map((f, i) => i === idx ? e.target.files[0] : f)); }} className="hidden" />
+                                    </label>
+                                    <button type="button" onClick={() => startCamera({ type: 'idSlot', index: idx })} className="flex items-center gap-1 py-1.5 px-3 bg-indigo-600/10 hover:bg-indigo-600/20 border border-indigo-500/20 text-indigo-400 rounded-xl text-[10px] font-bold transition-all">
+                                      <Camera className="w-3 h-3" />Cam
+                                    </button>
+                                  </div>
                                 )}
                               </div>
                             ))}
                           </div>
-                        )}
+
+                          {/* ── Companions Section ── */}
+                          <div className="space-y-2.5 pt-2.5 border-t border-slate-800">
+                            <div className="flex items-center justify-between">
+                              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                                <Users className="w-3.5 h-3.5 text-violet-400" />Companions {companions.length > 0 && <span className="text-violet-400">({companions.length})</span>}
+                              </p>
+                              <button type="button" onClick={addCompanion}
+                                className="text-[10px] text-violet-400 hover:text-violet-300 font-bold flex items-center gap-1 transition-colors">
+                                <Plus className="w-3 h-3" />Add Companion
+                              </button>
+                            </div>
+
+                            {companions.map((comp, ci) => (
+                              <div key={ci} className="border border-violet-500/20 bg-violet-500/3 rounded-xl p-3 space-y-2.5">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-[10px] font-bold text-violet-400 flex items-center gap-1.5">
+                                    <User className="w-3 h-3" />Companion {ci + 1}
+                                  </span>
+                                  <button type="button" onClick={() => removeCompanion(ci)} className="text-slate-650 hover:text-red-400 transition-colors">
+                                    <X className="w-4 h-4" />
+                                  </button>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-2">
+                                  <input value={comp.name} onChange={e => updateCompanion(ci, 'name', e.target.value)} placeholder="Full Name *"
+                                    className="bg-slate-850 border border-slate-700 text-white text-[10px] rounded-xl px-2.5 py-2 focus:outline-none focus:border-violet-500 transition-all" />
+                                  <div className="relative flex gap-2">
+                                    <input value={comp.phone} onChange={e => updateCompanion(ci, 'phone', e.target.value)} placeholder="Phone *"
+                                      className="flex-1 bg-slate-850 border border-slate-700 text-white text-[10px] rounded-xl px-2.5 py-2 focus:outline-none focus:border-violet-500 transition-all" />
+                                    {isContactPickerSupported() && (
+                                      <button type="button" onClick={() => handleImportContact(ci)}
+                                        className="px-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl flex items-center justify-center transition-colors shrink-0">
+                                        <Contact className="w-3.5 h-3.5" />
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+
+                                <div className="space-y-1.5">
+                                  <p className="text-[9px] font-bold text-slate-600 uppercase tracking-wider">ID Documents</p>
+                                  {comp.idFiles.map((file, ii) => (
+                                    <div key={ii}>
+                                      {file ? (
+                                        <div className="flex items-center gap-1.5 bg-emerald-500/5 border border-emerald-500/15 p-1.5 rounded-lg">
+                                          <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                                          <span className="text-[9px] text-slate-400 flex-1 truncate">{file.name}</span>
+                                          <button type="button" onClick={() => updateCompanionId(ci, ii, null)} className="text-red-450 hover:text-red-355"><X className="w-3 h-3" /></button>
+                                        </div>
+                                      ) : (
+                                        <div className="flex gap-1.5">
+                                          <label className="flex-1 flex items-center justify-center gap-1 py-1 px-2 border border-slate-700 hover:bg-slate-800 text-slate-500 rounded-lg text-[9px] font-semibold cursor-pointer transition-colors">
+                                            <Plus className="w-2.5 h-2.5" />ID {ii + 1}
+                                            <input type="file" accept="image/*,application/pdf" onChange={e => { if (e.target.files[0]) updateCompanionId(ci, ii, e.target.files[0]); }} className="hidden" />
+                                          </label>
+                                          <button type="button" onClick={() => startCamera({ type: 'companionId', compIndex: ci, idIndex: ii })} className="flex items-center gap-1 py-1 px-2 bg-violet-600/10 hover:bg-violet-600/20 border border-violet-500/20 text-violet-400 rounded-lg text-[9px] font-bold transition-all">
+                                            <Camera className="w-2.5 h-2.5" />
+                                          </button>
+                                        </div>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
                       </div>
                     </div>
                   )}
 
-                  {/* Step 2: Booking details */}
+                  {/* Step 2: Stay & Billing */}
                   <div className="space-y-4 pt-1">
                     <div className="flex items-center gap-2">
                       <span className="w-5 h-5 rounded-full bg-indigo-500 text-white text-[10px] font-black flex items-center justify-center shrink-0">2</span>
                       <h4 className="text-xs font-bold uppercase tracking-wider text-slate-300">Stay &amp; Billing</h4>
                     </div>
                     <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Expected Check-Out</label>
-                        <div className="relative">
-                          <Calendar className="absolute left-3 top-3.5 w-4 h-4 text-slate-500" />
-                          <input type="date" required value={expectedCheckout} onChange={(e) => setExpectedCheckout(e.target.value)}
-                            className="w-full bg-slate-800/80 border border-slate-700 text-white text-sm rounded-xl pl-9 pr-3 py-3 focus:outline-none focus:border-indigo-500 cursor-pointer" />
-                        </div>
+                      <div className="col-span-2 bg-slate-800/25 border border-slate-800 rounded-xl p-3.5 flex items-center justify-between gap-3">
+                        <label className="flex items-center gap-2.5 text-xs font-bold text-slate-300 cursor-pointer select-none">
+                          <input type="checkbox" checked={hasExpectedCheckout} onChange={e => { setHasExpectedCheckout(e.target.checked); if (!e.target.checked) setExpectedCheckout(''); }}
+                            className="w-4 h-4 rounded border-slate-700 bg-slate-800 text-indigo-650 focus:ring-indigo-500 cursor-pointer" />
+                          Specify Expected Checkout Date
+                        </label>
+                        {hasExpectedCheckout && (
+                          <div className="w-36 shrink-0">
+                            <input type="date" required={hasExpectedCheckout} value={expectedCheckout} onChange={e => setExpectedCheckout(e.target.value)}
+                              className="w-full bg-slate-900 border border-slate-700 text-white text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-indigo-500 cursor-pointer" />
+                          </div>
+                        )}
                       </div>
-                      <div>
-                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Daily Rate (₹)</label>
+                      <div className="col-span-2">
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Daily Rate (₹) *</label>
                         <div className="relative">
                           <IndianRupee className="absolute left-3 top-3.5 w-4 h-4 text-slate-500" />
-                          <input type="number" required value={roomRate} onChange={(e) => setRoomRate(e.target.value)} placeholder="Rate"
+                          <input type="number" required value={roomRate} onChange={e => setRoomRate(e.target.value)} placeholder="Rate"
                             className="w-full bg-slate-800/80 border border-slate-700 text-white text-sm rounded-xl pl-9 pr-3 py-3 focus:outline-none focus:border-indigo-500" />
                         </div>
                       </div>
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Advance Paid (₹)</label>
-                      <div className="relative">
-                        <IndianRupee className="absolute left-3 top-3.5 w-4 h-4 text-slate-500" />
-                        <input type="number" value={advancePaid} onChange={(e) => setAdvancePaid(e.target.value)} placeholder="0"
-                          className="w-full bg-slate-800/80 border border-slate-700 text-white text-sm rounded-xl pl-9 pr-4 py-3 focus:outline-none focus:border-indigo-500" />
+                      <div className="col-span-2">
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Advance Paid (₹)</label>
+                        <div className="relative">
+                          <IndianRupee className="absolute left-3 top-3.5 w-4 h-4 text-slate-500" />
+                          <input type="number" value={advancePaid} onChange={e => setAdvancePaid(e.target.value)} placeholder="0"
+                            className="w-full bg-slate-800/80 border border-slate-700 text-white text-sm rounded-xl pl-9 pr-4 py-3 focus:outline-none focus:border-indigo-500" />
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -728,6 +937,7 @@ const Dashboard = () => {
                       Confirm Check-In
                     </button>
                   </div>
+                  <canvas ref={canvasRef} width="640" height="480" className="hidden" />
                 </form>
               )}
 
