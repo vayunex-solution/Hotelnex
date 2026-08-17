@@ -1,5 +1,7 @@
 import pool from '../config/db.js';
 import { getSignedFileUrl } from '../config/s3.js';
+import eventBus from '../core/eventbus/eventBus.js';
+
 
 const mapBookingUrls = async (booking) => {
   if (!booking) return null;
@@ -108,9 +110,17 @@ export const checkIn = async (req, res) => {
 
     const bookingId = bookingResult.insertId;
 
-    // 5. Store companion guests if provided
+    // 5. Store companion guests if provided (with tenant scope validation)
     if (Array.isArray(companion_ids) && companion_ids.length > 0) {
-      for (const cId of companion_ids) {
+      // Filter out companion IDs that do not belong to the current hotel_id
+      const placeholders = companion_ids.map(() => '?').join(',');
+      const [matchedCompanions] = await pool.execute(
+        `SELECT id FROM guests WHERE id IN (${placeholders}) AND hotel_id = ?`,
+        [...companion_ids, hotel_id]
+      );
+      const validCompanionIds = matchedCompanions.map(c => c.id);
+
+      for (const cId of validCompanionIds) {
         try {
           await pool.execute(
             'INSERT INTO booking_companions (booking_id, guest_id) VALUES (?, ?)',
@@ -121,6 +131,13 @@ export const checkIn = async (req, res) => {
         }
       }
     }
+
+    // Publish BookingCheckedIn event to trigger automated workflows
+    eventBus.publish('BookingCheckedIn', { bookingId }, {
+      tenantId: req.user.tenantId || null,
+      propertyId: hotel_id,
+      userId: req.user.userId
+    }).catch(err => console.error('[BookingController] EventBus publish failed:', err.message));
 
     return res.status(201).json({
       success: true,
@@ -202,6 +219,13 @@ export const checkOut = async (req, res) => {
         id
       ]
     );
+
+    // Publish BookingCheckedOut event to trigger automated workflows
+    eventBus.publish('BookingCheckedOut', { bookingId: id }, {
+      tenantId: req.user.tenantId || null,
+      propertyId: hotel_id,
+      userId: req.user.userId
+    }).catch(err => console.error('[BookingController] EventBus publish failed:', err.message));
 
     return res.status(200).json({
       success: true,
@@ -465,13 +489,13 @@ export const getBookingDetails = async (req, res) => {
 
     const booking = rows[0];
 
-    // 2. Fetch companion guests
+    // 2. Fetch companion guests (secured by matching guest hotel_id)
     const [companions] = await pool.execute(
       `SELECT g.full_name, g.phone_number, g.address
        FROM booking_companions bc
        JOIN guests g ON bc.guest_id = g.id
-       WHERE bc.booking_id = ?`,
-      [id]
+       WHERE bc.booking_id = ? AND g.hotel_id = ?`,
+      [id, hotel_id]
     );
 
     return res.status(200).json({

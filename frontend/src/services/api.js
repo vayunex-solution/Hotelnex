@@ -21,19 +21,25 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// ─── Response Interceptor ──────────────────────────────────────────────────────
 // Handles stale/expired sessions globally.
-// On 401, clears stored credentials and redirects to login.
+// On 401 or 403 token expiration/invalidation, clears stored credentials and redirects to login.
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response && error.response.status === 401) {
-      // Clear all auth state — token is invalid or expired
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
+    if (error.response) {
+      const { status, data } = error.response;
+      const msg = data?.message?.toLowerCase() || '';
+      
+      if (status === 401 || (status === 403 && (msg.includes('token') || msg.includes('expired') || msg.includes('authentication')))) {
+        // Clear all auth state — token is invalid or expired
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
 
-      // Redirect to login — avoids stale sessions lingering in the app
-      window.location.href = '/login';
+        // Redirect to login — avoids stale sessions lingering in the app
+        if (!window.location.pathname.startsWith('/login')) {
+          window.location.href = '/login';
+        }
+      }
     }
     return Promise.reject(error);
   }

@@ -15,7 +15,7 @@ import { Loader2 } from 'lucide-react';
  * This component handles UX-level redirection only.
  */
 const ProtectedRoute = ({ children }) => {
-  const { isAuthenticated, loading } = useAuth();
+  const { user, isAuthenticated, loading } = useAuth();
 
   // Wait for localStorage restoration before making redirect decision
   if (loading) {

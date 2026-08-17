@@ -22,8 +22,9 @@ export const login = async (req, res) => {
 
   try {
     // 2. Query user by email only — never trust any hotel_id from the request
+    // is_super_admin = 0 ensures platform super admins cannot login via the hotel PMS endpoint
     const [rows] = await pool.execute(
-      'SELECT id, hotel_id, name, email, role, password_hash FROM users WHERE email = ? LIMIT 1',
+      'SELECT id, hotel_id, name, email, role, password_hash, email_verified, verification_method FROM users WHERE email = ? AND is_super_admin = 0 LIMIT 1',
       [email.trim().toLowerCase()]
     );
 
@@ -50,7 +51,11 @@ export const login = async (req, res) => {
     const payload = {
       userId: user.id,
       hotelId: user.hotel_id,
+      name: user.name,
+      email: user.email,
       role: user.role,
+      emailVerified: user.email_verified === 1 || user.email_verified === true || user.email_verified === '1',
+      scope: ['hotel']
     };
 
     const token = jwt.sign(payload, process.env.JWT_SECRET, {
@@ -68,6 +73,8 @@ export const login = async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
+        email_verified: !!user.email_verified,
+        verification_method: user.verification_method
       },
     });
 

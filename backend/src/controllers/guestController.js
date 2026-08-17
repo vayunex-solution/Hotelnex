@@ -167,9 +167,14 @@ export const createGuest = async (req, res) => {
 export const updateGuest = async (req, res) => {
   const { id } = req.params;
   const { full_name, phone_number, address, document_url } = req.body;
+  const hotel_id = req.user.hotelId;
 
   try {
-    const [existing] = await pool.execute('SELECT id FROM guests WHERE id = ? LIMIT 1', [id]);
+    // IDOR protection: Verify guest profile belongs to the authenticated user's hotel
+    const [existing] = await pool.execute(
+      'SELECT id FROM guests WHERE id = ? AND hotel_id = ? LIMIT 1', 
+      [id, hotel_id]
+    );
     if (existing.length === 0) {
       return res.status(404).json({
         success: false,
@@ -178,8 +183,8 @@ export const updateGuest = async (req, res) => {
     }
 
     await pool.execute(
-      'UPDATE guests SET full_name = ?, phone_number = ?, address = ?, document_url = ? WHERE id = ?',
-      [full_name.trim(), phone_number.trim(), address ? address.trim() : null, document_url ? document_url.trim() : null, id]
+      'UPDATE guests SET full_name = ?, phone_number = ?, address = ?, document_url = ? WHERE id = ? AND hotel_id = ?',
+      [full_name.trim(), phone_number.trim(), address ? address.trim() : null, document_url ? document_url.trim() : null, id, hotel_id]
     );
 
     const files = req.files || {};
@@ -230,8 +235,8 @@ export const updateGuest = async (req, res) => {
       `SELECT g.*, gd.guest_photo, gd.id_front, gd.id_back, gd.id_3, gd.id_4, gd.id_5 
        FROM guests g 
        LEFT JOIN guest_documents gd ON g.id = gd.guest_id 
-       WHERE g.id = ?`,
-      [id]
+       WHERE g.id = ? AND g.hotel_id = ?`,
+      [id, hotel_id]
     );
 
     return res.status(200).json({

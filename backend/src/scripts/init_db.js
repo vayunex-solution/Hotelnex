@@ -89,6 +89,9 @@ const mysqlTableQueries = [
         guest_photo VARCHAR(511),
         id_front VARCHAR(511),
         id_back VARCHAR(511),
+        id_3 VARCHAR(511) DEFAULT NULL,
+        id_4 VARCHAR(511) DEFAULT NULL,
+        id_5 VARCHAR(511) DEFAULT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         CONSTRAINT fk_docs_guest FOREIGN KEY (guest_id) REFERENCES guests(id) ON DELETE CASCADE,
         INDEX idx_docs_guest_id (guest_id)
@@ -125,6 +128,21 @@ const mysqlTableQueries = [
         INDEX idx_bookings_hotel_status (hotel_id, status),
         INDEX idx_bookings_hotel_room (hotel_id, room_id),
         INDEX idx_bookings_hotel_check_in (hotel_id, check_in_time)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `
+  },
+  {
+    name: 'booking_companions',
+    sql: `
+      CREATE TABLE IF NOT EXISTS booking_companions (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        booking_id INT NOT NULL,
+        guest_id INT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT fk_companions_booking FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE CASCADE,
+        CONSTRAINT fk_companions_guest FOREIGN KEY (guest_id) REFERENCES guests(id) ON DELETE CASCADE,
+        INDEX idx_companions_booking_id (booking_id),
+        INDEX idx_companions_guest_id (guest_id)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `
   }
@@ -192,6 +210,9 @@ const sqliteSchemaQueries = [
     guest_photo VARCHAR(511),
     id_front VARCHAR(511),
     id_back VARCHAR(511),
+    id_3 VARCHAR(511) DEFAULT NULL,
+    id_4 VARCHAR(511) DEFAULT NULL,
+    id_5 VARCHAR(511) DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_docs_guest FOREIGN KEY (guest_id) REFERENCES guests(id) ON DELETE CASCADE
   );`,
@@ -225,7 +246,19 @@ const sqliteSchemaQueries = [
   `CREATE INDEX IF NOT EXISTS idx_bookings_check_in_time ON bookings(check_in_time);`,
   `CREATE INDEX IF NOT EXISTS idx_bookings_hotel_status ON bookings(hotel_id, status);`,
   `CREATE INDEX IF NOT EXISTS idx_bookings_hotel_room ON bookings(hotel_id, room_id);`,
-  `CREATE INDEX IF NOT EXISTS idx_bookings_hotel_check_in ON bookings(hotel_id, check_in_time);`
+  `CREATE INDEX IF NOT EXISTS idx_bookings_hotel_check_in ON bookings(hotel_id, check_in_time);`,
+
+  // 5b. booking_companions
+  `CREATE TABLE IF NOT EXISTS booking_companions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    booking_id INT NOT NULL,
+    guest_id INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_companions_booking FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE CASCADE,
+    CONSTRAINT fk_companions_guest FOREIGN KEY (guest_id) REFERENCES guests(id) ON DELETE CASCADE
+  );`,
+  `CREATE INDEX IF NOT EXISTS idx_companions_booking_id ON booking_companions(booking_id);`,
+  `CREATE INDEX IF NOT EXISTS idx_companions_guest_id ON booking_companions(guest_id);`
 ];
 
 async function initializeMySQL() {

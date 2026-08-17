@@ -78,4 +78,45 @@ if (dbType === 'sqlite') {
   });
 }
 
+// Intercept pool query and execute methods for observability slow query logging
+const originalQuery = pool.query;
+pool.query = async function(...args) {
+  const start = Date.now();
+  try {
+    const result = await originalQuery.apply(this, args);
+    const duration = Date.now() - start;
+    
+    // Ignore slow-query-logger queries to prevent circular recursion
+    const sql = args[0];
+    if (sql && typeof sql === 'string' && !sql.includes('slow_queries') && !sql.includes('system_metrics')) {
+      import('../core/observability/slowQueryLogger.js').then((module) => {
+        module.default.checkAndLog(sql, duration);
+      }).catch(() => {});
+    }
+    return result;
+  } catch (err) {
+    throw err;
+  }
+};
+
+const originalExecute = pool.execute;
+pool.execute = async function(...args) {
+  const start = Date.now();
+  try {
+    const result = await originalExecute.apply(this, args);
+    const duration = Date.now() - start;
+    
+    const sql = args[0];
+    if (sql && typeof sql === 'string' && !sql.includes('slow_queries') && !sql.includes('system_metrics')) {
+      import('../core/observability/slowQueryLogger.js').then((module) => {
+        module.default.checkAndLog(sql, duration);
+      }).catch(() => {});
+    }
+    return result;
+  } catch (err) {
+    throw err;
+  }
+};
+
 export default pool;
+
