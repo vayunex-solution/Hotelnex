@@ -10,13 +10,13 @@ import {
 } from 'lucide-react';
 
 const NAV_LINKS = [
-  { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/rooms',     icon: BedDouble,        label: 'Rooms'     },
-  { to: '/bookings',  icon: CalendarRange,    label: 'Bookings'  },
-  { to: '/shifts',    icon: ArrowRightLeft,   label: 'Room Shifts' },
+  { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard'       },
+  { to: '/rooms',     icon: BedDouble,        label: 'Rooms'           },
+  { to: '/bookings',  icon: CalendarRange,    label: 'Bookings'        },
+  { to: '/shifts',    icon: ArrowRightLeft,   label: 'Room Shifts'     }, // v2 — room transfer module
   { to: '/history',   icon: History,          label: 'Booking History' },
-  { to: '/guests',    icon: Users,            label: 'Guests'    },
-  { to: '/settings',  icon: Settings,         label: 'Settings'  },
+  { to: '/guests',    icon: Users,            label: 'Guests'          },
+  { to: '/settings',  icon: Settings,         label: 'Settings'        },
 ];
 
 const MainLayout = ({ children }) => {
