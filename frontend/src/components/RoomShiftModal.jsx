@@ -8,41 +8,24 @@ import {
 } from 'lucide-react';
 
 const ISSUE_CATEGORIES = [
-  { id: 'ac_hvac',     label: 'AC / HVAC',         desc: 'Not cooling/heating, compressor fault',    icon: Snowflake,   color: '#38bdf8', bg: 'rgba(56,189,248,0.12)',  chip: 'AC compressor dead'            },
-  { id: 'plumbing',    label: 'Plumbing & Water',   desc: 'No hot water, leak, clogged drain',        icon: Droplets,    color: '#60a5fa', bg: 'rgba(96,165,250,0.12)',  chip: 'Water leakage'                 },
-  { id: 'electrical',  label: 'Electrical Fault',   desc: 'Socket dead, sparking, TV malfunction',    icon: Zap,         color: '#fbbf24', bg: 'rgba(251,191,36,0.12)',  chip: 'Power outage in room'          },
-  { id: 'cleanliness', label: 'Cleanliness',        desc: 'Dirty linen, washroom, pests sighted',     icon: Sparkles,    color: '#a78bfa', bg: 'rgba(167,139,250,0.12)', chip: 'Hygiene issue'                 },
-  { id: 'noise',       label: 'Noise Disturbance',  desc: 'Neighbors, generator, street traffic',     icon: VolumeX,     color: '#f87171', bg: 'rgba(248,113,113,0.12)', chip: 'Loud street/traffic noise'     },
-  { id: 'odor',        label: 'Foul Odor / Smell',  desc: 'Cigarette smoke, dampness, drainage',      icon: Wind,        color: '#2dd4bf', bg: 'rgba(45,212,191,0.12)',  chip: 'Cigarette smoke smell'         },
-  { id: 'door_lock',   label: 'Door Lock / Key',    desc: 'Keycard dead, sensor failing, latch jammed', icon: KeyRound,  color: '#818cf8', bg: 'rgba(129,140,248,0.12)', chip: 'Electronic keycard broken'     },
-  { id: 'wifi',        label: 'WiFi / Signal',      desc: 'Dead zone, zero mobile reception',         icon: WifiOff,     color: '#34d399', bg: 'rgba(52,211,153,0.12)',  chip: 'No WiFi in room'               },
-  { id: 'upgrade',     label: 'Guest Upgrade',      desc: 'Requested Deluxe / Suite category',        icon: Star,        color: '#fcd34d', bg: 'rgba(252,211,77,0.12)',  chip: 'Guest requested upgrade'       },
-  { id: 'downgrade',   label: 'Budget Preference',  desc: 'Guest wants lower category room',          icon: Tag,         color: '#94a3b8', bg: 'rgba(148,163,184,0.12)', chip: 'Budget room preference'        },
-  { id: 'safety',      label: 'Safety Concern',     desc: 'Broken latch, balcony door, guest unease', icon: ShieldAlert, color: '#fb7185', bg: 'rgba(251,113,133,0.12)', chip: 'Safety / window issue'         },
-  { id: 'maintenance', label: 'Maintenance Work',   desc: 'Deep cleaning, pest control, painting',    icon: Wrench,      color: '#fb923c', bg: 'rgba(251,146,60,0.12)',  chip: 'Scheduled maintenance required' },
+  { id: 'ac_hvac',     label: 'AC / HVAC',         desc: 'Not cooling/heating, compressor fault',      icon: Snowflake,   colorClass: 'text-sky-400 bg-sky-500/10 border-sky-500/25',     chip: 'AC compressor dead'            },
+  { id: 'plumbing',    label: 'Plumbing & Water',   desc: 'No hot water, leak, clogged drain',          icon: Droplets,    colorClass: 'text-blue-400 bg-blue-500/10 border-blue-500/25',   chip: 'Water leakage'                 },
+  { id: 'electrical',  label: 'Electrical Fault',   desc: 'Socket dead, sparking, TV malfunction',      icon: Zap,         colorClass: 'text-amber-400 bg-amber-500/10 border-amber-500/25', chip: 'Power outage in room'          },
+  { id: 'cleanliness', label: 'Cleanliness',        desc: 'Dirty linen, washroom, pests sighted',       icon: Sparkles,    colorClass: 'text-purple-400 bg-purple-500/10 border-purple-500/25', chip: 'Hygiene issue'              },
+  { id: 'noise',       label: 'Noise Disturbance',  desc: 'Neighbors, generator, street traffic',       icon: VolumeX,     colorClass: 'text-rose-400 bg-rose-500/10 border-rose-500/25',   chip: 'Loud street/traffic noise'     },
+  { id: 'odor',        label: 'Foul Odor / Smell',  desc: 'Cigarette smoke, dampness, drainage',        icon: Wind,        colorClass: 'text-teal-400 bg-teal-500/10 border-teal-500/25',   chip: 'Cigarette smoke smell'         },
+  { id: 'door_lock',   label: 'Door Lock / Key',    desc: 'Keycard dead, sensor failing, latch jammed', icon: KeyRound,    colorClass: 'text-indigo-400 bg-indigo-500/10 border-indigo-500/25', chip: 'Electronic keycard broken' },
+  { id: 'wifi',        label: 'WiFi / Signal',      desc: 'Dead zone, zero mobile reception',           icon: WifiOff,     colorClass: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/25', chip: 'No WiFi in room'         },
+  { id: 'upgrade',     label: 'Guest Upgrade',      desc: 'Requested Deluxe / Suite category',          icon: Star,        colorClass: 'text-yellow-400 bg-yellow-500/10 border-yellow-500/25', chip: 'Guest requested upgrade'   },
+  { id: 'downgrade',   label: 'Budget Preference',  desc: 'Guest wants lower category room',            icon: Tag,         colorClass: 'text-slate-400 bg-slate-500/10 border-slate-500/25', chip: 'Budget room preference'        },
+  { id: 'safety',      label: 'Safety Concern',     desc: 'Broken latch, balcony door, guest unease',   icon: ShieldAlert, colorClass: 'text-rose-400 bg-rose-500/10 border-rose-500/25',   chip: 'Safety / window issue'         },
+  { id: 'maintenance', label: 'Maintenance Work',   desc: 'Deep cleaning, pest control, painting',      icon: Wrench,      colorClass: 'text-orange-400 bg-orange-500/10 border-orange-500/25', chip: 'Scheduled repair'          },
 ];
 
 const QUICK_CHIPS = [
   'AC compressor dead', 'No hot water in shower', 'Loud street/traffic noise',
   'Cigarette smoke smell', 'Guest requested higher floor', 'Keycard sensor fail', 'Bathroom drainage clogged'
 ];
-
-/* ── Stepper pill ─────────────────────────────────────── */
-const StepPill = ({ num, label, active, done }) => (
-  <div className={`flex items-center gap-2 transition-all duration-300 ${active ? 'opacity-100' : done ? 'opacity-70' : 'opacity-35'}`}>
-    <div
-      className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 transition-all duration-300"
-      style={{
-        background: done ? 'linear-gradient(135deg,#10b981,#059669)' : active ? 'linear-gradient(135deg,#6366f1,#8b5cf6)' : 'rgba(255,255,255,0.06)',
-        boxShadow: active ? '0 0 12px rgba(99,102,241,0.5)' : done ? '0 0 8px rgba(16,185,129,0.4)' : 'none',
-        color: (active || done) ? '#fff' : '#64748b'
-      }}
-    >
-      {done ? <Check className="w-3 h-3" /> : num}
-    </div>
-    <span className={`text-[11px] font-bold tracking-wide ${active ? 'text-white' : done ? 'text-emerald-400' : 'text-slate-600'}`}>{label}</span>
-  </div>
-);
 
 const RoomShiftModal = ({ isOpen, onClose, booking, currentRoom, onSuccess }) => {
   const [step, setStep] = useState(1);
@@ -61,15 +44,21 @@ const RoomShiftModal = ({ isOpen, onClose, booking, currentRoom, onSuccess }) =>
 
   useEffect(() => {
     if (isOpen) {
-      setStep(1); setError(''); setSuccessMsg('');
-      setSelectedTargetRoom(null); setRatePolicy('keep_current');
-      setCustomNotes(''); setMarkMaintenance(true);
+      setStep(1);
+      setError('');
+      setSuccessMsg('');
+      setSelectedTargetRoom(null);
+      setRatePolicy('keep_current');
+      setCustomNotes('');
+      setMarkMaintenance(true);
       fetchAvailableRooms();
     }
   }, [isOpen]);
 
   useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape' && isOpen && !submitting) onClose(); };
+    const onKey = (e) => {
+      if (e.key === 'Escape' && isOpen && !submitting) onClose();
+    };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [isOpen, submitting, onClose]);
@@ -82,8 +71,11 @@ const RoomShiftModal = ({ isOpen, onClose, booking, currentRoom, onSuccess }) =>
         const currentId = currentRoom?.id || booking?.room_id;
         setAvailableRooms(res.data.data.filter(r => r.status === 'Available' && String(r.id) !== String(currentId)));
       }
-    } catch { setError('Unable to load available rooms.'); }
-    finally { setLoadingRooms(false); }
+    } catch {
+      setError('Unable to load available rooms.');
+    } finally {
+      setLoadingRooms(false);
+    }
   };
 
   if (!isOpen) return null;
@@ -101,141 +93,159 @@ const RoomShiftModal = ({ isOpen, onClose, booking, currentRoom, onSuccess }) =>
 
   const handleSubmitShift = async () => {
     if (!selectedTargetRoom || !booking?.id) return;
-    setSubmitting(true); setError('');
+    setSubmitting(true);
+    setError('');
     try {
       const res = await api.post('/bookings/shift-room', {
-        bookingId: booking.id, toRoomId: selectedTargetRoom.id,
-        reasonCategory: reasonObj.label, reasonDetails: customNotes.trim(),
-        markOldRoomMaintenance: markMaintenance, ratePolicy
+        bookingId: booking.id,
+        toRoomId: selectedTargetRoom.id,
+        reasonCategory: reasonObj.label,
+        reasonDetails: customNotes.trim(),
+        markOldRoomMaintenance: markMaintenance,
+        ratePolicy
       });
       if (res.data?.success) {
         setSuccessMsg(res.data.message || 'Room shifted successfully!');
-        setTimeout(() => { if (onSuccess) onSuccess(res.data.data); onClose(); }, 1400);
+        setTimeout(() => {
+          if (onSuccess) onSuccess(res.data.data);
+          onClose();
+        }, 1200);
       }
     } catch (err) {
       setError(err.response?.data?.message || 'Shift failed. Please check room availability.');
-    } finally { setSubmitting(false); }
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  /* ────────── RENDER ────────── */
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5"
-      style={{ background: 'rgba(2,4,14,0.88)', backdropFilter: 'blur(16px)' }}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
+      <div className="bg-slate-900 border border-slate-800 w-full max-w-2xl rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[88vh]">
 
-      <div
-        className="w-full max-w-2xl flex flex-col max-h-[94vh] sm:max-h-[90vh] rounded-2xl sm:rounded-3xl overflow-hidden"
-        style={{
-          background: 'linear-gradient(160deg,#0f111a 0%,#0b0d18 100%)',
-          border: '1px solid rgba(99,102,241,0.18)',
-          boxShadow: '0 32px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.04) inset, 0 1px 0 rgba(255,255,255,0.06) inset'
-        }}
-      >
-
-        {/* ── HEADER ─────────────────────────────────── */}
-        <div className="px-5 sm:px-6 pt-5 pb-4 shrink-0" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex items-center gap-3.5 min-w-0">
-              <div className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0"
-                style={{ background: 'linear-gradient(135deg,rgba(99,102,241,0.25),rgba(139,92,246,0.15))', border: '1px solid rgba(99,102,241,0.3)', boxShadow: '0 0 20px rgba(99,102,241,0.2)' }}>
-                <ArrowRightLeft className="w-5 h-5" style={{ color: '#818cf8' }} />
-              </div>
-              <div className="min-w-0">
-                <h2 className="text-base sm:text-lg font-black text-white tracking-tight leading-tight">Room Shift & Transfer</h2>
-                <p className="text-[11px] sm:text-xs mt-0.5 truncate" style={{ color: '#64748b' }}>
-                  <span style={{ color: '#94a3b8' }}>{booking?.guest_name || 'In-House Guest'}</span>
-                  <span className="mx-1.5" style={{ color: '#334155' }}>·</span>
-                  <span>Current: </span>
-                  <span className="font-bold" style={{ color: '#818cf8' }}>Room {booking?.room_number || currentRoom?.room_number}</span>
-                  <span className="ml-1" style={{ color: '#475569' }}>({booking?.room_category || currentRoom?.category})</span>
-                </p>
-              </div>
+        {/* ── HEADER ───────────────────────────────────────────────────────── */}
+        <div className="px-5 sm:px-6 py-4 border-b border-slate-800 bg-slate-900/95 flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-xl bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center text-indigo-400 shrink-0 shadow-lg shadow-indigo-500/10">
+              <ArrowRightLeft className="w-5 h-5" />
             </div>
-            <button onClick={onClose} disabled={submitting}
-              className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-all hover:scale-105 cursor-pointer"
-              style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: '#64748b' }}>
-              <X className="w-4 h-4" />
-            </button>
+            <div className="min-w-0">
+              <h2 className="text-base sm:text-lg font-black text-white tracking-tight">Room Shift &amp; Transfer</h2>
+              <p className="text-xs text-slate-400 truncate">
+                Guest: <span className="font-bold text-slate-200">{booking?.guest_name || 'In-House Guest'}</span> · Current: <span className="font-bold text-indigo-400">Room {booking?.room_number || currentRoom?.room_number}</span> ({booking?.room_category || currentRoom?.category})
+              </p>
+            </div>
           </div>
+          <button
+            onClick={onClose}
+            disabled={submitting}
+            className="w-9 h-9 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition-all shrink-0 cursor-pointer"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
 
-          {/* Stepper */}
-          <div className="flex items-center gap-2 mt-4">
-            <StepPill num={1} label="Reason"       active={step === 1} done={step > 1} />
-            <div className="flex-1 h-px mx-1" style={{ background: step > 1 ? 'linear-gradient(90deg,#6366f1,#10b981)' : 'rgba(255,255,255,0.06)' }} />
-            <StepPill num={2} label="Target Room"  active={step === 2} done={step > 2} />
-            <div className="flex-1 h-px mx-1" style={{ background: step > 2 ? 'linear-gradient(90deg,#6366f1,#10b981)' : 'rgba(255,255,255,0.06)' }} />
-            <StepPill num={3} label="Review & Confirm" active={step === 3} done={false} />
+        {/* ── STEPPER ──────────────────────────────────────────────────────── */}
+        <div className="px-5 sm:px-6 py-2.5 bg-slate-950/50 border-b border-slate-800 flex items-center justify-between text-xs font-bold select-none">
+          <div className={`flex items-center gap-2 ${step >= 1 ? 'text-indigo-400' : 'text-slate-500'}`}>
+            <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black ${step > 1 ? 'bg-emerald-500 text-white' : step === 1 ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-400'}`}>
+              {step > 1 ? '✓' : '1'}
+            </span>
+            <span>Reason</span>
+          </div>
+          <ChevronRight className="w-3.5 h-3.5 text-slate-600 shrink-0" />
+          <div className={`flex items-center gap-2 ${step >= 2 ? 'text-indigo-400' : 'text-slate-500'}`}>
+            <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black ${step > 2 ? 'bg-emerald-500 text-white' : step === 2 ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-400'}`}>
+              {step > 2 ? '✓' : '2'}
+            </span>
+            <span>Target Room</span>
+          </div>
+          <ChevronRight className="w-3.5 h-3.5 text-slate-600 shrink-0" />
+          <div className={`flex items-center gap-2 ${step >= 3 ? 'text-indigo-400' : 'text-slate-500'}`}>
+            <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black ${step === 3 ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-400'}`}>
+              3
+            </span>
+            <span>Review &amp; Confirm</span>
           </div>
         </div>
 
-        {/* ── BODY ───────────────────────────────────── */}
-        <div className="flex-1 overflow-y-auto px-5 sm:px-6 py-4 sm:py-5 space-y-4" style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(99,102,241,0.2) transparent' }}>
-
-          {/* Alerts */}
+        {/* ── BODY ─────────────────────────────────────────────────────────── */}
+        <div className="p-5 sm:p-6 overflow-y-auto flex-1 space-y-4">
           {error && (
-            <div className="flex items-start gap-2.5 px-4 py-3 rounded-xl text-xs" style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#f87171' }}>
-              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" /><span>{error}</span>
+            <div className="p-3.5 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-400 text-xs flex items-start gap-2.5">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+              <span>{error}</span>
             </div>
           )}
+
           {successMsg && (
-            <div className="flex items-center gap-2.5 px-4 py-3 rounded-xl text-xs font-semibold" style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.25)', color: '#34d399' }}>
-              <CheckCircle2 className="w-4 h-4 shrink-0" /><span>{successMsg}</span>
+            <div className="p-3.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-400 text-xs flex items-center gap-2.5">
+              <CheckCircle2 className="w-5 h-5 shrink-0" />
+              <span className="font-bold">{successMsg}</span>
             </div>
           )}
 
           {/* ─── STEP 1: REASON ─── */}
           {step === 1 && (
             <div className="space-y-4">
-              {/* Section label */}
               <div className="flex items-center justify-between">
-                <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: '#475569' }}>Select Issue Category</p>
-                <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold" style={{ background: 'rgba(99,102,241,0.12)', color: '#818cf8', border: '1px solid rgba(99,102,241,0.2)' }}>12 Categories</span>
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                  Select Issue Reason (12 Categories)
+                </label>
+                <span className="text-[10px] font-bold text-slate-500">Tap to select</span>
               </div>
 
-              {/* Grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-[230px] sm:max-h-[260px] overflow-y-auto pr-0.5" style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(99,102,241,0.2) transparent' }}>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 max-h-[240px] sm:max-h-[260px] overflow-y-auto pr-1">
                 {ISSUE_CATEGORIES.map((cat) => {
                   const Icon = cat.icon;
                   const isSelected = selectedReason === cat.id;
                   return (
-                    <button key={cat.id} type="button" onClick={() => setSelectedReason(cat.id)}
-                      className="text-left p-3 rounded-xl sm:rounded-2xl border transition-all cursor-pointer group relative overflow-hidden"
-                      style={{
-                        background: isSelected ? `linear-gradient(135deg,${cat.bg},rgba(99,102,241,0.08))` : 'rgba(255,255,255,0.025)',
-                        border: isSelected ? `1.5px solid ${cat.color}50` : '1px solid rgba(255,255,255,0.06)',
-                        boxShadow: isSelected ? `0 0 20px ${cat.color}20, 0 4px 12px rgba(0,0,0,0.3)` : 'none',
-                        transform: isSelected ? 'scale(1.01)' : 'scale(1)',
-                      }}>
-                      {isSelected && <div className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full flex items-center justify-center" style={{ background: cat.color, boxShadow: `0 0 8px ${cat.color}80` }}>
-                        <Check className="w-2.5 h-2.5 text-white" />
-                      </div>}
-                      <div className="w-8 h-8 rounded-xl flex items-center justify-center mb-2 shrink-0"
-                        style={{ background: cat.bg, border: `1px solid ${cat.color}25` }}>
-                        <Icon className="w-4 h-4" style={{ color: cat.color }} />
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => setSelectedReason(cat.id)}
+                      className={`text-left p-3 rounded-xl border transition-all cursor-pointer relative ${
+                        isSelected
+                          ? 'bg-indigo-600/15 border-indigo-500 shadow-md shadow-indigo-500/10 ring-1 ring-indigo-500/40'
+                          : 'bg-slate-900 hover:bg-slate-800 border-slate-800'
+                      }`}
+                    >
+                      {isSelected && (
+                        <div className="absolute top-2 right-2 w-4 h-4 rounded-full bg-indigo-600 flex items-center justify-center text-white">
+                          <Check className="w-2.5 h-2.5" />
+                        </div>
+                      )}
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center mb-2 border ${cat.colorClass}`}>
+                        <Icon className="w-4 h-4" />
                       </div>
-                      <p className="text-[11px] font-bold leading-tight mb-0.5 line-clamp-1" style={{ color: isSelected ? '#f1f5f9' : '#94a3b8' }}>{cat.label}</p>
-                      <p className="text-[9px] sm:text-[10px] leading-tight line-clamp-2" style={{ color: isSelected ? '#64748b' : '#334155' }}>{cat.desc}</p>
+                      <p className="text-xs font-bold text-white truncate mb-0.5">{cat.label}</p>
+                      <p className="text-[10px] text-slate-400 line-clamp-2 leading-tight">{cat.desc}</p>
                     </button>
                   );
                 })}
               </div>
 
-              {/* Remarks */}
+              {/* Remarks Notes */}
               <div>
-                <p className="text-[10px] font-black uppercase tracking-widest mb-2" style={{ color: '#475569' }}>Staff Notes / Remarks</p>
-                <textarea rows={2} value={customNotes} onChange={e => setCustomNotes(e.target.value)}
-                  placeholder="e.g. AC compressor trip, guest reported at 11:30 PM..."
-                  className="w-full text-xs placeholder:text-slate-700 text-slate-200 rounded-xl px-3.5 py-2.5 resize-none focus:outline-none transition-all"
-                  style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', outline: 'none' }}
-                  onFocus={e => e.target.style.borderColor = 'rgba(99,102,241,0.5)'}
-                  onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.07)'}
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-400 block mb-1.5">
+                  Staff Notes / Remarks
+                </label>
+                <textarea
+                  rows={2}
+                  value={customNotes}
+                  onChange={(e) => setCustomNotes(e.target.value)}
+                  placeholder="e.g. AC compressor trip, guest requested immediate shift..."
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-indigo-500 transition-colors"
                 />
-                <div className="flex items-center flex-wrap gap-1.5 mt-2">
-                  <span className="text-[9px] font-bold uppercase tracking-wider" style={{ color: '#334155' }}>Quick:</span>
-                  {QUICK_CHIPS.map((chip, i) => (
-                    <button key={i} type="button"
-                      onClick={() => setCustomNotes(p => p ? `${p}, ${chip}` : chip)}
-                      className="px-2 py-0.5 rounded-lg text-[10px] font-medium transition-all cursor-pointer hover:scale-105"
-                      style={{ background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.15)', color: '#6366f1' }}>
+
+                <div className="flex items-center gap-1.5 flex-wrap mt-2">
+                  <span className="text-[10px] font-bold text-slate-500">Quick:</span>
+                  {QUICK_CHIPS.map((chip, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setCustomNotes(prev => prev ? `${prev}, ${chip}` : chip)}
+                      className="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-lg text-[10px] font-semibold transition-all cursor-pointer"
+                    >
                       + {chip}
                     </button>
                   ))}
@@ -243,93 +253,102 @@ const RoomShiftModal = ({ isOpen, onClose, booking, currentRoom, onSuccess }) =>
               </div>
 
               {/* Maintenance Toggle */}
-              <div className="flex items-center justify-between gap-4 p-3.5 sm:p-4 rounded-xl sm:rounded-2xl"
-                style={{ background: 'rgba(251,146,60,0.07)', border: '1px solid rgba(251,146,60,0.18)' }}>
+              <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3.5 sm:p-4 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-                    style={{ background: 'rgba(251,146,60,0.15)', border: '1px solid rgba(251,146,60,0.2)' }}>
-                    <Wrench className="w-4 h-4" style={{ color: '#fb923c' }} />
+                  <div className="w-9 h-9 rounded-xl bg-amber-500/15 border border-amber-500/25 flex items-center justify-center text-amber-400 shrink-0">
+                    <Wrench className="w-4 h-4" />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-xs font-bold text-white truncate">Mark Room {booking?.room_number || currentRoom?.room_number} as Maintenance</p>
-                    <p className="text-[10px] truncate" style={{ color: '#64748b' }}>Blocks room from new check-ins until repaired.</p>
+                    <p className="text-xs font-bold text-white truncate">
+                      Mark Room {booking?.room_number || currentRoom?.room_number} as 'Under Maintenance'
+                    </p>
+                    <p className="text-[10px] text-slate-400 truncate">Blocks this room from new check-ins until repaired.</p>
                   </div>
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer shrink-0">
-                  <input type="checkbox" checked={markMaintenance} onChange={e => setMarkMaintenance(e.target.checked)} className="sr-only peer" />
-                  <div className="w-10 h-5 rounded-full transition-all peer-checked:bg-orange-500 bg-slate-800 after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-5" />
+                  <input
+                    type="checkbox"
+                    checked={markMaintenance}
+                    onChange={(e) => setMarkMaintenance(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-10 h-5 sm:w-11 sm:h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 sm:after:h-5 sm:after:w-5 after:transition-all peer-checked:bg-amber-500" />
                 </label>
               </div>
             </div>
           )}
 
-          {/* ─── STEP 2: ROOMS ─── */}
+          {/* ─── STEP 2: DESTINATION ROOM ─── */}
           {step === 2 && (
-            <div className="space-y-3">
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
-                  {['all', 'Standard', 'Deluxe', 'Suite'].map(cat => (
-                    <button key={cat} type="button" onClick={() => setCategoryFilter(cat)}
-                      className="px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer"
-                      style={categoryFilter.toLowerCase() === cat.toLowerCase()
-                        ? { background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', color: '#fff', boxShadow: '0 4px 14px rgba(99,102,241,0.35)' }
-                        : { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', color: '#64748b' }}>
+            <div className="space-y-3.5">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
+                  {['all', 'Standard', 'Deluxe', 'Suite'].map((cat) => (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => setCategoryFilter(cat)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
+                        categoryFilter.toLowerCase() === cat.toLowerCase()
+                          ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/25'
+                          : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700'
+                      }`}
+                    >
                       {cat === 'all' ? 'All Rooms' : cat}
                     </button>
                   ))}
                 </div>
-                <input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
-                  placeholder="Room no..."
-                  className="text-xs text-slate-200 placeholder:text-slate-700 px-3 py-1.5 rounded-xl w-full sm:w-28 focus:outline-none"
-                  style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}
-                  onFocus={e => e.target.style.borderColor = 'rgba(99,102,241,0.5)'}
-                  onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.07)'}
+
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search Room..."
+                  className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-indigo-500 w-full sm:w-36"
                 />
               </div>
 
               {loadingRooms ? (
-                <div className="py-16 text-center">
-                  <Loader2 className="w-7 h-7 animate-spin mx-auto mb-2" style={{ color: '#6366f1' }} />
-                  <p className="text-xs" style={{ color: '#475569' }}>Fetching available rooms...</p>
+                <div className="py-20 text-center">
+                  <Loader2 className="w-8 h-8 animate-spin text-indigo-500 mx-auto mb-2" />
+                  <p className="text-xs text-slate-400">Fetching available rooms...</p>
                 </div>
               ) : filteredRooms.length === 0 ? (
-                <div className="py-12 text-center rounded-2xl" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
-                  <BedDouble className="w-8 h-8 mx-auto mb-2" style={{ color: '#1e293b' }} />
-                  <p className="text-sm font-bold" style={{ color: '#334155' }}>No available rooms</p>
-                  <p className="text-xs mt-0.5" style={{ color: '#1e293b' }}>All rooms are occupied or under maintenance.</p>
+                <div className="py-14 bg-slate-900 border border-slate-800 rounded-2xl text-center px-4 space-y-2">
+                  <BedDouble className="w-9 h-9 text-slate-600 mx-auto" />
+                  <p className="text-sm font-bold text-slate-200">No Available Destination Rooms</p>
+                  <p className="text-xs text-slate-400">All other rooms are occupied or locked in maintenance.</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 max-h-[280px] sm:max-h-[310px] overflow-y-auto pr-0.5" style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(99,102,241,0.2) transparent' }}>
-                  {filteredRooms.map(room => {
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-3 max-h-[280px] sm:max-h-[300px] overflow-y-auto pr-1">
+                  {filteredRooms.map((room) => {
                     const isSelected = selectedTargetRoom?.id === room.id;
-                    const base = parseFloat(room.base_rate);
-                    const diff = base - currentRate;
+                    const roomBase = parseFloat(room.base_rate);
+                    const diff = roomBase - currentRate;
                     return (
-                      <button key={room.id} type="button" onClick={() => setSelectedTargetRoom(room)}
-                        className="p-3.5 rounded-xl sm:rounded-2xl border text-left transition-all cursor-pointer relative overflow-hidden group"
-                        style={{
-                          background: isSelected ? 'linear-gradient(135deg,rgba(99,102,241,0.18),rgba(139,92,246,0.1))' : 'rgba(255,255,255,0.025)',
-                          border: isSelected ? '1.5px solid rgba(99,102,241,0.5)' : '1px solid rgba(255,255,255,0.06)',
-                          boxShadow: isSelected ? '0 0 24px rgba(99,102,241,0.2), 0 4px 16px rgba(0,0,0,0.4)' : 'none',
-                          transform: isSelected ? 'scale(1.02)' : 'scale(1)',
-                        }}>
-                        {isSelected && <div className="absolute top-2 right-2 w-5 h-5 rounded-full flex items-center justify-center" style={{ background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', boxShadow: '0 0 10px rgba(99,102,241,0.6)' }}>
-                          <Check className="w-3 h-3 text-white" />
-                        </div>}
-                        <div className="flex items-center gap-1.5 mb-1.5">
-                          <span className="text-base font-black" style={{ color: isSelected ? '#e2e8f0' : '#94a3b8' }}>
-                            {room.room_number}
+                      <button
+                        key={room.id}
+                        type="button"
+                        onClick={() => setSelectedTargetRoom(room)}
+                        className={`p-3.5 rounded-xl border text-left transition-all relative cursor-pointer ${
+                          isSelected
+                            ? 'bg-indigo-600/20 border-indigo-500 shadow-lg shadow-indigo-500/15 ring-2 ring-indigo-500/40'
+                            : 'bg-slate-900 hover:bg-slate-800 border-slate-800'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between mb-1">
+                          <span className="text-base font-black text-white">Room {room.room_number}</span>
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                            Avail
                           </span>
-                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(16,185,129,0.1)', color: '#34d399', border: '1px solid rgba(16,185,129,0.2)' }}>AVAIL</span>
                         </div>
-                        <p className="text-[10px] font-semibold mb-2" style={{ color: '#475569' }}>{room.category}</p>
-                        <div className="flex items-center justify-between pt-2" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                          <span className="text-xs font-black" style={{ color: isSelected ? '#f1f5f9' : '#64748b' }}>₹{base.toLocaleString('en-IN')}<span className="text-[9px] font-normal ml-0.5" style={{ color: '#334155' }}>/nt</span></span>
+                        <p className="text-xs text-slate-400 font-semibold mb-2">{room.category}</p>
+                        <div className="flex items-center justify-between border-t border-slate-800 pt-2 text-xs">
+                          <span className="font-bold text-white">₹{roomBase.toLocaleString('en-IN')}<span className="text-[10px] text-slate-400 font-normal">/nt</span></span>
                           {diff !== 0 && (
-                            <span className="text-[10px] font-black px-1.5 py-0.5 rounded-md" style={{
-                              background: diff > 0 ? 'rgba(251,191,36,0.1)' : 'rgba(16,185,129,0.1)',
-                              color: diff > 0 ? '#fbbf24' : '#34d399'
-                            }}>{diff > 0 ? `+₹${diff}` : `-₹${Math.abs(diff)}`}</span>
+                            <span className={`text-[10px] font-black ${diff > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                              {diff > 0 ? `+₹${diff}` : `-₹${Math.abs(diff)}`}
+                            </span>
                           )}
                         </div>
                       </button>
@@ -340,133 +359,166 @@ const RoomShiftModal = ({ isOpen, onClose, booking, currentRoom, onSuccess }) =>
             </div>
           )}
 
-          {/* ─── STEP 3: REVIEW ─── */}
+          {/* ─── STEP 3: REVIEW & CONFIRM ─── */}
           {step === 3 && selectedTargetRoom && (
             <div className="space-y-4">
+              <div className="bg-slate-950 border border-slate-800 rounded-2xl p-4 space-y-3">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-800 text-xs">
+                  <span className="text-slate-400 font-bold uppercase tracking-wider">Shift Route</span>
+                  <div className="flex items-center gap-2 font-bold">
+                    <span className="px-2.5 py-1 rounded-lg bg-rose-500/15 border border-rose-500/30 text-rose-400">
+                      Room {booking?.room_number || currentRoom?.room_number}
+                    </span>
+                    <ArrowRightLeft className="w-3.5 h-3.5 text-slate-500" />
+                    <span className="px-2.5 py-1 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-400">
+                      Room {selectedTargetRoom.room_number}
+                    </span>
+                  </div>
+                </div>
 
-              {/* Transfer Visual */}
-              <div className="flex items-center justify-center gap-3 p-5 rounded-2xl" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                <div className="text-center">
-                  <p className="text-[10px] uppercase tracking-widest mb-1.5 font-bold" style={{ color: '#ef4444' }}>FROM</p>
-                  <div className="text-3xl font-black" style={{ color: '#f87171' }}>
-                    {booking?.room_number || currentRoom?.room_number}
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  <div>
+                    <p className="text-slate-400 font-medium">Guest Name</p>
+                    <p className="text-white font-bold truncate">{booking?.guest_name || 'In-House Guest'}</p>
                   </div>
-                  <p className="text-[10px] mt-1" style={{ color: '#475569' }}>{booking?.room_category || currentRoom?.category}</p>
-                </div>
-                <div className="flex flex-col items-center gap-1">
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg,rgba(99,102,241,0.2),rgba(139,92,246,0.12))', border: '1px solid rgba(99,102,241,0.25)' }}>
-                    <ArrowRightLeft className="w-4 h-4" style={{ color: '#818cf8' }} />
+                  <div>
+                    <p className="text-slate-400 font-medium">Reason</p>
+                    <p className="text-indigo-400 font-bold truncate">{reasonObj.label}</p>
                   </div>
-                  <p className="text-[9px] font-bold" style={{ color: '#334155' }}>SHIFT</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-[10px] uppercase tracking-widest mb-1.5 font-bold" style={{ color: '#10b981' }}>TO</p>
-                  <div className="text-3xl font-black" style={{ color: '#34d399' }}>
-                    {selectedTargetRoom.room_number}
+                  <div>
+                    <p className="text-slate-400 font-medium">Old Room Status</p>
+                    <p className={`font-bold ${markMaintenance ? 'text-amber-400' : 'text-emerald-400'}`}>
+                      {markMaintenance ? 'Under Maintenance' : 'Available'}
+                    </p>
                   </div>
-                  <p className="text-[10px] mt-1" style={{ color: '#475569' }}>{selectedTargetRoom.category}</p>
+                  <div>
+                    <p className="text-slate-400 font-medium">New Category</p>
+                    <p className="text-white font-bold">{selectedTargetRoom.category}</p>
+                  </div>
                 </div>
               </div>
 
-              {/* Summary Grid */}
-              <div className="grid grid-cols-2 gap-2.5">
-                {[
-                  { label: 'Guest', value: booking?.guest_name || 'In-House Guest', valueColor: '#e2e8f0' },
-                  { label: 'Reason', value: reasonObj.label, valueColor: '#818cf8' },
-                  { label: 'Old Room Status', value: markMaintenance ? '🔧 Under Maintenance' : '✅ Available', valueColor: markMaintenance ? '#fb923c' : '#34d399' },
-                  { label: 'New Category', value: selectedTargetRoom.category, valueColor: '#e2e8f0' },
-                ].map(({ label, value, valueColor }) => (
-                  <div key={label} className="p-3 rounded-xl" style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.05)' }}>
-                    <p className="text-[9px] uppercase tracking-widest font-bold mb-1" style={{ color: '#334155' }}>{label}</p>
-                    <p className="text-xs font-bold truncate" style={{ color: valueColor }}>{value}</p>
-                  </div>
-                ))}
-              </div>
-
-              {/* Rate Policy */}
+              {/* Rate Policy Selector */}
               <div>
-                <p className="text-[10px] font-black uppercase tracking-widest mb-2" style={{ color: '#475569' }}>Rate Adjustment Policy</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  {[
-                    {
-                      value: 'keep_current', title: 'Complimentary Shift',
-                      desc: `Keep current rate ₹${currentRate.toLocaleString('en-IN')}/nt — Best for service issues`
-                    },
-                    {
-                      value: 'apply_new', title: 'Apply New Room Rate',
-                      desc: `Charge ₹${targetRate.toLocaleString('en-IN')}/nt (${rateDiff >= 0 ? `+₹${rateDiff}` : `-₹${Math.abs(rateDiff)}`}) — For voluntary upgrades`
-                    }
-                  ].map(opt => {
-                    const isActive = ratePolicy === opt.value;
-                    return (
-                      <label key={opt.value} className="p-3.5 rounded-xl border cursor-pointer transition-all flex gap-3 items-start"
-                        style={{
-                          background: isActive ? 'linear-gradient(135deg,rgba(99,102,241,0.15),rgba(139,92,246,0.08))' : 'rgba(255,255,255,0.025)',
-                          border: isActive ? '1.5px solid rgba(99,102,241,0.4)' : '1px solid rgba(255,255,255,0.06)',
-                          boxShadow: isActive ? '0 0 16px rgba(99,102,241,0.15)' : 'none'
-                        }}>
-                        <div className="mt-0.5 w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 transition-all"
-                          style={{ borderColor: isActive ? '#6366f1' : '#334155', background: isActive ? '#6366f1' : 'transparent' }}>
-                          {isActive && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-xs font-bold" style={{ color: isActive ? '#e2e8f0' : '#64748b' }}>{opt.title}</p>
-                          <p className="text-[10px] mt-0.5 leading-relaxed" style={{ color: isActive ? '#475569' : '#1e293b' }}>{opt.desc}</p>
-                        </div>
-                        <input type="radio" name="ratePolicy" value={opt.value} checked={isActive} onChange={() => setRatePolicy(opt.value)} className="sr-only" />
-                      </label>
-                    );
-                  })}
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-400 block mb-2">
+                  Rate Adjustment Policy
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <label
+                    className={`p-4 rounded-xl border cursor-pointer transition-all flex flex-col justify-between ${
+                      ratePolicy === 'keep_current'
+                        ? 'bg-indigo-600/15 border-indigo-500 ring-1 ring-indigo-500/40'
+                        : 'bg-slate-900 border-slate-800 hover:bg-slate-800'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-xs font-bold text-white">Complimentary Shift</span>
+                      <input
+                        type="radio"
+                        name="ratePolicy"
+                        value="keep_current"
+                        checked={ratePolicy === 'keep_current'}
+                        onChange={() => setRatePolicy('keep_current')}
+                        className="text-indigo-600 cursor-pointer"
+                      />
+                    </div>
+                    <p className="text-xs text-slate-400">
+                      Keep current rate of <strong className="text-white font-bold">₹{currentRate.toLocaleString('en-IN')}</strong>. Best for service or maintenance issues.
+                    </p>
+                  </label>
+
+                  <label
+                    className={`p-4 rounded-xl border cursor-pointer transition-all flex flex-col justify-between ${
+                      ratePolicy === 'apply_new'
+                        ? 'bg-indigo-600/15 border-indigo-500 ring-1 ring-indigo-500/40'
+                        : 'bg-slate-900 border-slate-800 hover:bg-slate-800'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-xs font-bold text-white">Apply New Room Rate</span>
+                      <input
+                        type="radio"
+                        name="ratePolicy"
+                        value="apply_new"
+                        checked={ratePolicy === 'apply_new'}
+                        onChange={() => setRatePolicy('apply_new')}
+                        className="text-indigo-600 cursor-pointer"
+                      />
+                    </div>
+                    <p className="text-xs text-slate-400">
+                      Charge new rate of <strong className="text-white font-bold">₹{targetRate.toLocaleString('en-IN')}</strong> ({rateDiff >= 0 ? `+₹${diff}` : `-₹${Math.abs(rateDiff)}`}/nt). Best for guest upgrades.
+                    </p>
+                  </label>
                 </div>
               </div>
             </div>
           )}
         </div>
 
-        {/* ── FOOTER ─────────────────────────────────── */}
-        <div className="px-5 sm:px-6 py-4 shrink-0 flex items-center justify-between gap-3"
-          style={{ borderTop: '1px solid rgba(255,255,255,0.05)', background: 'rgba(0,0,0,0.2)' }}>
-
+        {/* ── FOOTER ───────────────────────────────────────────────────────── */}
+        <div className="px-5 sm:px-6 py-4 border-t border-slate-800 bg-slate-900/95 flex items-center justify-between shrink-0">
           {step > 1 ? (
-            <button type="button" onClick={() => setStep(s => s - 1)} disabled={submitting}
-              className="px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer hover:scale-105"
-              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: '#64748b' }}>
+            <button
+              type="button"
+              onClick={() => setStep(step - 1)}
+              disabled={submitting}
+              className="px-4 py-2.5 rounded-xl border border-slate-700 bg-slate-800 text-xs font-bold text-slate-200 hover:bg-slate-700 transition-all cursor-pointer"
+            >
               ← Back
             </button>
           ) : (
-            <button type="button" onClick={onClose} disabled={submitting}
-              className="px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer hover:scale-105"
-              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', color: '#475569' }}>
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={submitting}
+              className="px-4 py-2.5 rounded-xl border border-slate-800 bg-slate-900 text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-800 transition-all cursor-pointer"
+            >
               Cancel
             </button>
           )}
 
           {step === 1 && (
-            <button type="button" onClick={() => { if (!selectedReason) { setError('Please select a reason.'); return; } setError(''); setStep(2); }}
-              className="flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-bold text-white transition-all cursor-pointer hover:scale-105 active:scale-95"
-              style={{ background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', boxShadow: '0 4px 16px rgba(99,102,241,0.4)' }}>
-              Select Room <ChevronRight className="w-3.5 h-3.5" />
+            <button
+              type="button"
+              onClick={() => {
+                if (!selectedReason) { setError('Please select a reason.'); return; }
+                setError('');
+                setStep(2);
+              }}
+              className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-lg shadow-indigo-600/25 flex items-center gap-1.5 transition-all cursor-pointer"
+            >
+              Select Room <ChevronRight className="w-4 h-4" />
             </button>
           )}
 
           {step === 2 && (
-            <button type="button" onClick={() => { if (!selectedTargetRoom) { setError('Please select a destination room.'); return; } setError(''); setStep(3); }}
+            <button
+              type="button"
+              onClick={() => {
+                if (!selectedTargetRoom) { setError('Please select a destination room.'); return; }
+                setError('');
+                setStep(3);
+              }}
               disabled={!selectedTargetRoom}
-              className="flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-bold text-white transition-all cursor-pointer hover:scale-105 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100"
-              style={{ background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', boxShadow: selectedTargetRoom ? '0 4px 16px rgba(99,102,241,0.4)' : 'none' }}>
-              Review Shift <ChevronRight className="w-3.5 h-3.5" />
+              className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold shadow-lg shadow-indigo-600/25 flex items-center gap-1.5 transition-all cursor-pointer"
+            >
+              Review Shift <ChevronRight className="w-4 h-4" />
             </button>
           )}
 
           {step === 3 && (
-            <button type="button" onClick={handleSubmitShift} disabled={submitting}
-              className="flex items-center gap-2 px-6 py-2 rounded-xl text-xs font-bold text-white transition-all cursor-pointer hover:scale-105 active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:scale-100"
-              style={{ background: 'linear-gradient(135deg,#10b981,#059669)', boxShadow: '0 4px 16px rgba(16,185,129,0.4)' }}>
-              {submitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
-              {submitting ? 'Processing...' : 'Confirm & Shift Now'}
+            <button
+              type="button"
+              onClick={handleSubmitShift}
+              disabled={submitting}
+              className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-bold shadow-lg shadow-emerald-600/25 flex items-center gap-2 transition-all cursor-pointer"
+            >
+              {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+              {submitting ? 'Processing Shift...' : 'Confirm & Shift Now'}
             </button>
           )}
         </div>
+
       </div>
     </div>
   );
