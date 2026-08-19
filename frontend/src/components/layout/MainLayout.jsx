@@ -5,13 +5,15 @@ import { useTheme } from '../../context/ThemeContext.jsx';
 import api from '../../services/api.js';
 import { 
   LayoutDashboard, BedDouble, History, LogOut, Hotel, 
-  Clock, User, Users, CalendarRange, Menu, X, Sun, Moon, Settings
+  Clock, User, Users, CalendarRange, Menu, X, Sun, Moon, Settings,
+  ArrowRightLeft
 } from 'lucide-react';
 
 const NAV_LINKS = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/rooms',     icon: BedDouble,        label: 'Rooms'     },
   { to: '/bookings',  icon: CalendarRange,    label: 'Bookings'  },
+  { to: '/shifts',    icon: ArrowRightLeft,   label: 'Room Shifts' },
   { to: '/history',   icon: History,          label: 'Booking History' },
   { to: '/guests',    icon: Users,            label: 'Guests'    },
   { to: '/settings',  icon: Settings,         label: 'Settings'  },

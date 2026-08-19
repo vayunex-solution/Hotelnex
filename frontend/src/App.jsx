@@ -16,6 +16,7 @@ const Rooms          = React.lazy(() => import('./pages/Rooms/Rooms.jsx'));
 const BookingHistory = React.lazy(() => import('./pages/Bookings/BookingHistory.jsx'));
 const Guests         = React.lazy(() => import('./pages/Guests/Guests.jsx'));
 const Bookings       = React.lazy(() => import('./pages/Bookings/Bookings.jsx'));
+const RoomShifts     = React.lazy(() => import('./pages/Shifts/RoomShifts.jsx'));
 const Settings       = React.lazy(() => import('./pages/Settings/Settings.jsx'));
 
 // ─── Platform Admin Pages (lazy) ─────────────────────────────────────────────
@@ -59,8 +60,9 @@ const HotelPmsRoutes = () => (
     {[
       { path: '/dashboard', Page: Dashboard      },
       { path: '/rooms',     Page: Rooms          },
-      { path: '/history',   Page: BookingHistory },
       { path: '/bookings',  Page: Bookings       },
+      { path: '/shifts',    Page: RoomShifts     },
+      { path: '/history',   Page: BookingHistory },
       { path: '/guests',    Page: Guests         },
       { path: '/settings',  Page: Settings       },
     ].map(({ path, Page }) => (

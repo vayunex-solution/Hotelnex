@@ -170,7 +170,7 @@ export const checkOut = async (req, res) => {
 
   try {
     // 1. Fetch the active booking
-    const [bookings] = await pool.execute(
+    const [bookings] = await pool.query(
       'SELECT id, room_id, guest_id, check_in_time, room_rate, total_amount, advance_paid, status FROM bookings WHERE id = ? AND hotel_id = ? LIMIT 1',
       [id, hotel_id]
     );
@@ -204,17 +204,16 @@ export const checkOut = async (req, res) => {
     const pendingBalance = actualTotalAmount - parseFloat(booking.advance_paid);
 
     // 3. Update booking status and release room
-    await pool.execute(
+    await pool.query(
       'UPDATE rooms SET status = "Available" WHERE id = ?',
       [booking.room_id]
     );
 
-    await pool.execute(
+    await pool.query(
       `UPDATE bookings 
-       SET actual_check_out = ?, total_amount = ?, status = "Completed" 
+       SET actual_check_out = NOW(), total_amount = ?, status = "Completed" 
        WHERE id = ?`,
       [
-        checkOutTime.toISOString().slice(0, 19).replace('T', ' '),
         actualTotalAmount,
         id
       ]
@@ -239,10 +238,10 @@ export const checkOut = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('[BookingController] checkOut error:', error.message);
+    console.error('[BookingController] checkOut error:', error);
     return res.status(500).json({
       success: false,
-      message: 'An error occurred during check-out.',
+      message: error.message || 'An error occurred during check-out.',
     });
   }
 };
@@ -734,5 +733,39 @@ export const getBookingTransfers = async (req, res) => {
     });
   }
 };
+
+// ─── Get All Hotel Room Transfers (for dedicated Shift Manager page) ──────────
+export const getAllHotelTransfers = async (req, res) => {
+  const hotelId = req.user.hotelId;
+  try {
+    const [transfers] = await pool.query(
+      `SELECT rt.*,
+              rf.room_number AS from_room_number, rf.category AS from_room_category,
+              rt_to.room_number AS to_room_number, rt_to.category AS to_room_category,
+              u.name AS transferred_by_name,
+              g.full_name AS guest_name, g.phone_number AS guest_phone
+       FROM room_transfers rt
+       JOIN rooms rf ON rt.from_room_id = rf.id
+       JOIN rooms rt_to ON rt.to_room_id = rt_to.id
+       JOIN users u ON rt.transferred_by = u.id
+       JOIN guests g ON rt.guest_id = g.id
+       WHERE rt.hotel_id = ?
+       ORDER BY rt.transferred_at DESC`,
+      [hotelId]
+    );
+
+    return res.status(200).json({
+      success: true,
+      transfers
+    });
+  } catch (error) {
+    console.error('[BookingController] getAllHotelTransfers error:', error.message);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve all transfer logs.'
+    });
+  }
+};
+
 
 
