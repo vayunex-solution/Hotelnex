@@ -4,3 +4,4 @@ deployment:
     - /bin/cp -Rf backend/. /home/vayunexs/api.hotelnex.vayunexsolution.com/
     - /bin/cp -Rf frontend/dist/. /home/vayunexs/hotelnex.vayunexsolution.com/
     - export HOME=/home/vayunexs && cd /home/vayunexs/api.hotelnex.vayunexsolution.com && /home/vayunexs/nodevenv/api.hotelnex.vayunexsolution.com/24/bin/npm install --production
+    - /bin/mkdir -p /home/vayunexs/api.hotelnex.vayunexsolution.com/tmp && /bin/touch /home/vayunexs/api.hotelnex.vayunexsolution.com/tmp/restart.txt
