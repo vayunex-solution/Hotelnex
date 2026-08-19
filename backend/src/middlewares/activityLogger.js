@@ -70,23 +70,18 @@ const insertLog = async ({ hotelId, userId, userName, ip, action, actionLabel, m
  * Only logs POST / PUT / PATCH / DELETE (not GETs to avoid noise)
  */
 export const activityLogger = (req, res, next) => {
-  // Only track mutating requests
   const trackMethods = ['POST', 'PUT', 'PATCH', 'DELETE'];
   if (!trackMethods.includes(req.method)) return next();
 
-  const ip            = getClientIp(req);
-  const { action, label } = resolveAction(req.method, req.path);
-
-  // Intercept response finish to capture status code
-  const originalSend = res.send.bind(res);
-  res.send = function (body) {
-    const result = originalSend(body);
-    // Only log if user context is available (authenticated routes)
-    if (req.user) {
-      setImmediate(() =>
+  // Listen to response finish event — standard, safe, non-intrusive
+  res.on('finish', () => {
+    if (req.user && res.statusCode < 500) {
+      const ip = getClientIp(req);
+      const { action, label } = resolveAction(req.method, req.originalUrl || req.path);
+      setImmediate(() => {
         insertLog({
           hotelId:     req.user.hotelId,
-          userId:      req.user.id,
+          userId:      req.user.id || req.user.userId,
           userName:    req.user.name || req.user.email || 'Staff',
           ip,
           action,
@@ -95,11 +90,10 @@ export const activityLogger = (req, res, next) => {
           path:        req.originalUrl || req.path,
           statusCode:  res.statusCode,
           meta:        null
-        })
-      );
+        });
+      });
     }
-    return result;
-  };
+  });
 
   next();
 };

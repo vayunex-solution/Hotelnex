@@ -199,9 +199,13 @@ export const checkOut = async (req, res) => {
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     const actualNights = diffDays > 0 ? diffDays : 1;
 
-    // Recalculate total amount in case of early checkout or extended stay
-    const actualTotalAmount = parseFloat(booking.room_rate) * actualNights;
-    const pendingBalance = actualTotalAmount - parseFloat(booking.advance_paid);
+    const rate = parseFloat(booking.room_rate) || 0;
+    const advance = parseFloat(booking.advance_paid) || 0;
+    const originalTotal = parseFloat(booking.total_amount) || (rate * actualNights);
+
+    // Recalculate total amount
+    const actualTotalAmount = rate > 0 ? (rate * actualNights) : originalTotal;
+    const pendingBalance = Math.max(0, actualTotalAmount - advance);
 
     // 3. Update booking status and release room
     await pool.query(
@@ -220,11 +224,13 @@ export const checkOut = async (req, res) => {
     );
 
     // Publish BookingCheckedOut event to trigger automated workflows
-    eventBus.publish('BookingCheckedOut', { bookingId: id }, {
-      tenantId: req.user.tenantId || null,
-      propertyId: hotel_id,
-      userId: req.user.userId
-    }).catch(err => console.error('[BookingController] EventBus publish failed:', err.message));
+    if (eventBus && typeof eventBus.publish === 'function') {
+      eventBus.publish('BookingCheckedOut', { bookingId: id }, {
+        tenantId: req.user?.tenantId || null,
+        propertyId: hotel_id,
+        userId: req.user?.id || req.user?.userId || null
+      }).catch(err => console.warn('[BookingController] EventBus publish ignored:', err.message));
+    }
 
     return res.status(200).json({
       success: true,
@@ -233,7 +239,7 @@ export const checkOut = async (req, res) => {
         bookingId: id,
         nightsStayed: actualNights,
         totalPaid: actualTotalAmount,
-        advancePaid: booking.advance_paid,
+        advancePaid: advance,
         settledAmount: pendingBalance,
       }
     });
