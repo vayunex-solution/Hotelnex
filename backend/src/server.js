@@ -5,15 +5,17 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import pool from './config/db.js';
-import authRoutes     from './routes/authRoutes.js';
-import roomRoutes     from './routes/roomRoutes.js';
-import guestRoutes    from './routes/guestRoutes.js';
-import bookingRoutes  from './routes/bookingRoutes.js';
-import settingsRoutes from './routes/settingsRoutes.js';
-import platformRoutes from './routes/platformRoutes.js';
-import tenantRoutes from './routes/tenantRoutes.js';
+import authRoutes      from './routes/authRoutes.js';
+import roomRoutes      from './routes/roomRoutes.js';
+import guestRoutes     from './routes/guestRoutes.js';
+import bookingRoutes   from './routes/bookingRoutes.js';
+import settingsRoutes  from './routes/settingsRoutes.js';
+import platformRoutes  from './routes/platformRoutes.js';
+import tenantRoutes    from './routes/tenantRoutes.js';
+import activityRoutes  from './routes/activityRoutes.js';
 import { requireAuth, requireVerification } from './middlewares/authMiddleware.js';
 import { requireRole } from './middlewares/rbacMiddleware.js';
+import { activityLogger } from './middlewares/activityLogger.js';
 
 // Import core engines
 import bootstrapCore from './core/bootstrap.js';
@@ -67,6 +69,9 @@ app.use(express.json());
 
 // Observe request metrics
 app.use(metricCollector.requestTimer());
+
+// Activity logger — auto-logs all write operations with IP + user context
+app.use(activityLogger);
 
 // ─── Public Routes ─────────────────────────────────────────────────────────────
 app.get('/api/health', healthCheckHandler);
@@ -132,6 +137,31 @@ app.use('/api/tenant', tenantRoutes);
   } catch (e) {
     console.warn('[Migration] room_transfers table migration warning:', e.message);
   }
+
+  try {
+    // 4. Ensure activity_logs table exists for Activity Feed feature
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS activity_logs (
+        id           INT AUTO_INCREMENT PRIMARY KEY,
+        hotel_id     INT          NULL,
+        user_id      INT          NULL,
+        user_name    VARCHAR(100) NOT NULL DEFAULT 'System',
+        ip_address   VARCHAR(60)  NOT NULL DEFAULT 'unknown',
+        action       VARCHAR(60)  NOT NULL,
+        action_label VARCHAR(120) NOT NULL,
+        http_method  VARCHAR(10)  NOT NULL DEFAULT 'POST',
+        request_path VARCHAR(300) NOT NULL DEFAULT '/',
+        status_code  SMALLINT     NOT NULL DEFAULT 200,
+        meta         JSON         NULL,
+        created_at   TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_al_hotel_created (hotel_id, created_at),
+        INDEX idx_al_action        (action)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+    console.log('[Migration] activity_logs table ensured.');
+  } catch (e) {
+    console.warn('[Migration] activity_logs table migration warning:', e.message);
+  }
 })();
 
 // ─── Protected Routes ──────────────────────────────────────────────────────────
@@ -152,6 +182,9 @@ app.use('/api/bookings', requireAuth, bookingRoutes);
 
 // Settings module (requires auth)
 app.use('/api/settings', requireAuth, settingsRoutes);
+
+// Activity logs (requires auth)
+app.use('/api/activities', requireAuth, activityRoutes);
 
 // Profile — any authenticated user
 app.get('/api/profile', requireAuth, (req, res) => {
