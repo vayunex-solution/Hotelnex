@@ -104,6 +104,34 @@ app.use('/api/tenant', tenantRoutes);
   } catch (e) {
     console.warn('[Migration] email_verified backfill warning:', e.message);
   }
+
+  try {
+    // 3. Ensure room_transfers table exists for Room Shift feature
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS room_transfers (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        hotel_id INT NOT NULL,
+        booking_id INT NOT NULL,
+        guest_id INT NOT NULL,
+        from_room_id INT NOT NULL,
+        to_room_id INT NOT NULL,
+        reason_category VARCHAR(100) NOT NULL,
+        reason_details TEXT NULL,
+        mark_old_room_maintenance TINYINT(1) NOT NULL DEFAULT 1,
+        rate_policy ENUM('keep_current', 'apply_new') NOT NULL DEFAULT 'keep_current',
+        old_room_rate DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+        new_room_rate DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+        rate_difference DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+        transferred_by INT NOT NULL,
+        transferred_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_rt_hotel_booking (hotel_id, booking_id),
+        INDEX idx_rt_transferred_at (transferred_at)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+    console.log('[Migration] room_transfers table ensured.');
+  } catch (e) {
+    console.warn('[Migration] room_transfers table migration warning:', e.message);
+  }
 })();
 
 // ─── Protected Routes ──────────────────────────────────────────────────────────

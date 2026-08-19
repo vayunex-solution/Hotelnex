@@ -515,3 +515,224 @@ export const getBookingDetails = async (req, res) => {
   }
 };
 
+// ─── Shift / Transfer Room Flow ─────────────────────────────────────────────
+export const shiftRoom = async (req, res) => {
+  const {
+    bookingId,
+    toRoomId,
+    reasonCategory,
+    reasonDetails = '',
+    markOldRoomMaintenance = true,
+    ratePolicy = 'keep_current' // 'keep_current' or 'apply_new'
+  } = req.body;
+
+  const hotelId = req.user.hotelId;
+  const staffUserId = req.user.userId;
+
+  if (!bookingId || !toRoomId || !reasonCategory) {
+    return res.status(400).json({
+      success: false,
+      message: 'Booking ID, destination Room ID, and Reason Category are required.',
+    });
+  }
+
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+
+    // 1. Fetch active booking
+    const [bookings] = await conn.query(
+      `SELECT b.id, b.room_id, b.guest_id, b.room_rate, b.total_amount, b.check_in_time, b.expected_check_out, b.status,
+              r.room_number AS current_room_number, r.category AS current_category
+       FROM bookings b
+       JOIN rooms r ON b.room_id = r.id
+       WHERE b.id = ? AND b.hotel_id = ? FOR UPDATE`,
+      [bookingId, hotelId]
+    );
+
+    if (bookings.length === 0) {
+      await conn.rollback();
+      return res.status(404).json({ success: false, message: 'Active booking not found.' });
+    }
+
+    const booking = bookings[0];
+    if (booking.status !== 'Active') {
+      await conn.rollback();
+      return res.status(400).json({ success: false, message: `Cannot shift a booking with status '${booking.status}'.` });
+    }
+
+    const fromRoomId = booking.room_id;
+
+    if (parseInt(fromRoomId) === parseInt(toRoomId)) {
+      await conn.rollback();
+      return res.status(400).json({ success: false, message: 'Destination room cannot be the same as current room.' });
+    }
+
+    // 2. Fetch and lock destination room
+    const [targetRooms] = await conn.query(
+      `SELECT id, room_number, category, base_rate, status
+       FROM rooms
+       WHERE id = ? AND hotel_id = ? FOR UPDATE`,
+      [toRoomId, hotelId]
+    );
+
+    if (targetRooms.length === 0) {
+      await conn.rollback();
+      return res.status(404).json({ success: false, message: 'Destination room not found.' });
+    }
+
+    const targetRoom = targetRooms[0];
+    if (targetRoom.status !== 'Available') {
+      await conn.rollback();
+      return res.status(400).json({
+        success: false,
+        message: `Destination room ${targetRoom.room_number} is ${targetRoom.status} and cannot be assigned.`,
+      });
+    }
+
+    // 3. Determine new rates and total amount
+    const oldRoomRate = parseFloat(booking.room_rate);
+    const newRoomBaseRate = parseFloat(targetRoom.base_rate);
+    let finalRoomRate = oldRoomRate;
+    let finalTotalAmount = parseFloat(booking.total_amount);
+    let rateDifference = 0.00;
+
+    if (ratePolicy === 'apply_new') {
+      finalRoomRate = newRoomBaseRate;
+      rateDifference = newRoomBaseRate - oldRoomRate;
+
+      // Recalculate remaining stay days
+      const checkInDate = new Date(booking.check_in_time);
+      const expectedOutDate = new Date(booking.expected_check_out);
+      const isOpenStay = expectedOutDate.getFullYear() >= 2099;
+      
+      if (!isOpenStay) {
+        const diffTime = Math.abs(expectedOutDate - checkInDate);
+        const totalNights = Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+        finalTotalAmount = finalRoomRate * totalNights;
+      }
+    }
+
+    // 4. Update old room status (Maintenance or Available)
+    const oldRoomNewStatus = markOldRoomMaintenance ? 'Maintenance' : 'Available';
+    await conn.query(
+      `UPDATE rooms SET status = ? WHERE id = ? AND hotel_id = ?`,
+      [oldRoomNewStatus, fromRoomId, hotelId]
+    );
+
+    // 5. Update new room status to Occupied
+    await conn.query(
+      `UPDATE rooms SET status = 'Occupied' WHERE id = ? AND hotel_id = ?`,
+      [toRoomId, hotelId]
+    );
+
+    // 6. Update booking with new room and rate
+    await conn.query(
+      `UPDATE bookings 
+       SET room_id = ?, room_rate = ?, total_amount = ? 
+       WHERE id = ? AND hotel_id = ?`,
+      [toRoomId, finalRoomRate, finalTotalAmount, bookingId, hotelId]
+    );
+
+    // 7. Insert into room_transfers audit log
+    const [transferResult] = await conn.query(
+      `INSERT INTO room_transfers 
+       (hotel_id, booking_id, guest_id, from_room_id, to_room_id, reason_category, reason_details, 
+        mark_old_room_maintenance, rate_policy, old_room_rate, new_room_rate, rate_difference, transferred_by, transferred_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+      [
+        hotelId,
+        bookingId,
+        booking.guest_id,
+        fromRoomId,
+        toRoomId,
+        reasonCategory,
+        reasonDetails,
+        markOldRoomMaintenance ? 1 : 0,
+        ratePolicy,
+        oldRoomRate,
+        finalRoomRate,
+        rateDifference,
+        staffUserId
+      ]
+    );
+
+    await conn.commit();
+
+    // 8. Publish event for notification / analytics
+    eventBus.publish('RoomShifted', {
+      hotelId,
+      bookingId,
+      guestId: booking.guest_id,
+      fromRoomId,
+      fromRoomNumber: booking.current_room_number,
+      toRoomId,
+      toRoomNumber: targetRoom.room_number,
+      reasonCategory,
+      reasonDetails,
+      transferredBy: staffUserId,
+      transferId: transferResult.insertId,
+      timestamp: new Date()
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: `Guest successfully shifted from Room ${booking.current_room_number} to Room ${targetRoom.room_number}.`,
+      data: {
+        transferId: transferResult.insertId,
+        fromRoom: { id: fromRoomId, room_number: booking.current_room_number, newStatus: oldRoomNewStatus },
+        toRoom: { id: toRoomId, room_number: targetRoom.room_number, category: targetRoom.category },
+        ratePolicy,
+        roomRate: finalRoomRate,
+        totalAmount: finalTotalAmount
+      }
+    });
+
+  } catch (error) {
+    await conn.rollback();
+    console.error('[BookingController] shiftRoom error:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to execute room shift.'
+    });
+  } finally {
+    conn.release();
+  }
+};
+
+// ─── Get Room Transfers for a booking or hotel ───────────────────────────────
+export const getBookingTransfers = async (req, res) => {
+  const hotelId = req.user.hotelId;
+  const { id } = req.params;
+
+  try {
+    const [transfers] = await pool.query(
+      `SELECT rt.*,
+              rf.room_number AS from_room_number, rf.category AS from_room_category,
+              rt_to.room_number AS to_room_number, rt_to.category AS to_room_category,
+              u.name AS transferred_by_name,
+              g.full_name AS guest_name
+       FROM room_transfers rt
+       JOIN rooms rf ON rt.from_room_id = rf.id
+       JOIN rooms rt_to ON rt.to_room_id = rt_to.id
+       JOIN users u ON rt.transferred_by = u.id
+       JOIN guests g ON rt.guest_id = g.id
+       WHERE rt.booking_id = ? AND rt.hotel_id = ?
+       ORDER BY rt.transferred_at DESC`,
+      [id, hotelId]
+    );
+
+    return res.status(200).json({
+      success: true,
+      transfers
+    });
+  } catch (error) {
+    console.error('[BookingController] getBookingTransfers error:', error.message);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve transfer history.'
+    });
+  }
+};
+
+

@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import api from '../../services/api.js';
 import InvoiceModal from '../../components/InvoiceModal.jsx';
+import RoomShiftModal from '../../components/RoomShiftModal.jsx';
 import {
   Plus, Check, X, Loader2, AlertCircle, Search,
   User, Phone, MapPin, Calendar, Camera,
   Image as ImageIcon, FileText, ExternalLink, ShieldCheck,
   BedDouble, LogOut, IndianRupee, Clock, Zap, RefreshCw,
-  ArrowUpRight, Users, Contact, Receipt
+  ArrowUpRight, Users, Contact, Receipt, ArrowRightLeft
 } from 'lucide-react';
 import { isContactPickerSupported, pickContact } from '../../utils/contactPicker.js';
 
@@ -28,7 +29,7 @@ const MiniStat = ({ label, value, sub, color }) => {
 };
 
 // ─── Active Booking Card (mobile) ─────────────────────────────────────────────
-const BookingCard = ({ booking, onCheckout, onPreview, onInvoice }) => {
+const BookingCard = ({ booking, onCheckout, onPreview, onInvoice, onShift }) => {
   const nights = Math.max(1, Math.ceil(Math.abs(new Date() - new Date(booking.check_in_time)) / 86400000));
   const isOpenStay = new Date(booking.expected_check_out).getFullYear() >= 2099;
   const isOverdue = !isOpenStay && new Date(booking.expected_check_out) < new Date();
@@ -140,6 +141,12 @@ const BookingCard = ({ booking, onCheckout, onPreview, onInvoice }) => {
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <button
+            onClick={() => onShift(booking)}
+            className="px-3 py-2 bg-indigo-600/15 border border-indigo-500/30 text-indigo-400 hover:bg-indigo-600 hover:text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 cursor-pointer"
+          >
+            <ArrowRightLeft className="w-3.5 h-3.5" />Shift
+          </button>
+          <button
             onClick={() => onInvoice(booking.id)}
             className="px-3 py-2 bg-indigo-500/15 border border-indigo-500/30 text-indigo-400 hover:bg-indigo-600 hover:text-white hover:border-indigo-600 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0"
           >
@@ -166,9 +173,21 @@ const Bookings = () => {
   const [checkinModalOpen, setCheckinModalOpen]   = useState(false);
   const [checkoutModalOpen, setCheckoutModalOpen] = useState(false);
   const [previewModalOpen, setPreviewModalOpen]   = useState(false);
+  const [shiftModalOpen, setShiftModalOpen]       = useState(false);
+  const [shiftBookingData, setShiftBookingData]   = useState(null);
   const [selectedPreview, setSelectedPreview]     = useState(null);
   const [selectedBooking, setSelectedBooking]     = useState(null);
   const [invoiceBookingId, setInvoiceBookingId]   = useState(null);
+
+  const handleOpenShift = (booking) => {
+    setShiftBookingData(booking);
+    setShiftModalOpen(true);
+  };
+
+  const handleShiftSuccess = () => {
+    fetchActiveBookings();
+    fetchRooms();
+  };
 
   // Check-in form
   const [searchQuery, setSearchQuery]       = useState('');
@@ -621,6 +640,7 @@ const Bookings = () => {
               <BookingCard key={b.id} booking={b}
                 onCheckout={(bk) => { setSelectedBooking(bk); setFormError(''); setCheckoutModalOpen(true); }}
                 onPreview={triggerPreview}
+                onShift={handleOpenShift}
                 onInvoice={(id) => setInvoiceBookingId(id)} />
             ))}
           </div>
@@ -771,6 +791,12 @@ const Bookings = () => {
                         {/* Action */}
                         <td className="px-5 py-4 text-right">
                           <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => handleOpenShift(booking)}
+                              className="inline-flex items-center gap-1.5 px-3 py-2 bg-indigo-600/15 border border-indigo-500/30 text-indigo-400 hover:bg-indigo-600 hover:text-white rounded-xl text-xs font-bold transition-all cursor-pointer"
+                            >
+                              <ArrowRightLeft className="w-3.5 h-3.5" />Shift Room
+                            </button>
                             <button
                               onClick={() => setInvoiceBookingId(booking.id)}
                               className="inline-flex items-center gap-1.5 px-3 py-2 bg-indigo-500/15 border border-indigo-500/30 text-indigo-400 hover:bg-indigo-600 hover:text-white hover:border-indigo-600 rounded-xl text-xs font-bold transition-all"
@@ -1298,6 +1324,15 @@ const Bookings = () => {
           onClose={() => setInvoiceBookingId(null)}
         />
       )}
+
+      {/* ── ROOM SHIFT MODAL ────────────────────────────────────────── */}
+      <RoomShiftModal
+        isOpen={shiftModalOpen}
+        onClose={() => setShiftModalOpen(false)}
+        booking={shiftBookingData}
+        currentRoom={rooms.find(r => r.id === shiftBookingData?.room_id)}
+        onSuccess={handleShiftSuccess}
+      />
     </>
   );
 };

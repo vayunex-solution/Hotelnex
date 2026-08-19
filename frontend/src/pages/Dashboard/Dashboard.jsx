@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api.js';
+import RoomShiftModal from '../../components/RoomShiftModal.jsx';
 import {
   BedDouble, Search, X, Loader2, Wrench, Check,
   DollarSign, Calendar, Phone, MapPin, User, FileText,
   AlertCircle, RefreshCw, TrendingUp, Users, ArrowDownCircle,
   ArrowUpCircle, ShieldCheck, IndianRupee, LogIn, LogOut,
   Clock, Zap, ChevronRight, Image as ImageIcon, Contact,
-  Plus, Camera, ExternalLink
+  Plus, Camera, ExternalLink, ArrowRightLeft
 } from 'lucide-react';
 import { isContactPickerSupported, pickContact } from '../../utils/contactPicker.js';
 
@@ -219,9 +220,25 @@ const Dashboard = () => {
 
   const [occupiedModalOpen, setOccupiedModalOpen] = useState(false);
   const [availableModalOpen, setAvailableModalOpen] = useState(false);
+  const [shiftModalOpen, setShiftModalOpen] = useState(false);
+  const [shiftBookingData, setShiftBookingData] = useState(null);
   const [activeBookings, setActiveBookings] = useState([]);
   const [activeBookingsLoading, setActiveBookingsLoading] = useState(false);
   const [activeBookingsError, setActiveBookingsError] = useState('');
+
+  const handleOpenShiftModal = (bookingToShift, roomObj = null) => {
+    setShiftBookingData(bookingToShift || activeBooking);
+    if (roomObj) setSelectedRoom(roomObj);
+    setShiftModalOpen(true);
+  };
+
+  const handleShiftSuccess = () => {
+    fetchRooms();
+    fetchStats();
+    fetchActiveBookings();
+    setDrawerOpen(false);
+    setOccupiedModalOpen(false);
+  };
 
   const fetchActiveBookings = async () => {
     setActiveBookingsLoading(true);
@@ -1083,11 +1100,26 @@ const Dashboard = () => {
                     </div>
                   </div>
 
-                  <button type="button" onClick={handleCheckOutSubmit} disabled={drawerLoading}
-                    className="w-full py-4 bg-rose-600 hover:bg-rose-500 disabled:bg-rose-900 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2 shadow-lg shadow-rose-500/20 transition-all">
-                    {drawerLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <LogOut className="w-4 h-4" />}
-                    Settle Bill &amp; Finalize Check-Out
-                  </button>
+                  <div className="flex gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() => handleOpenShiftModal(activeBooking, selectedRoom)}
+                      disabled={drawerLoading}
+                      className="flex-1 py-3.5 bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/30 text-indigo-300 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                    >
+                      <ArrowRightLeft className="w-4 h-4 text-indigo-400" />
+                      Shift Room
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleCheckOutSubmit}
+                      disabled={drawerLoading}
+                      className="flex-[2] py-3.5 bg-rose-600 hover:bg-rose-500 disabled:bg-rose-900 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-lg shadow-rose-500/20 transition-all cursor-pointer"
+                    >
+                      {drawerLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <LogOut className="w-4 h-4" />}
+                      Settle &amp; Check-Out
+                    </button>
+                  </div>
                 </div>
               )}
 
@@ -1198,6 +1230,17 @@ const Dashboard = () => {
                           <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Rate/Night</span>
                           <span className="text-rose-400 font-bold mt-0.5">₹{parseFloat(booking.room_rate).toLocaleString('en-IN')}</span>
                         </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setOccupiedModalOpen(false);
+                            handleOpenShiftModal(booking, { id: booking.room_id, room_number: booking.room_number, category: booking.room_category, base_rate: booking.room_rate });
+                          }}
+                          className="px-3 py-1.5 bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/30 text-indigo-300 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all self-end sm:self-auto cursor-pointer"
+                        >
+                          <ArrowRightLeft className="w-3.5 h-3.5 text-indigo-400" />
+                          Shift Room
+                        </button>
                       </div>
                     </div>
                   ))}
@@ -1303,34 +1346,14 @@ const Dashboard = () => {
           </div>
         </div>
       )}
-      {/* Draft Recovery Banner */}
-      {showDraftBanner && (
-        <div className="fixed bottom-4 right-4 left-4 sm:left-auto sm:w-96 bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-2xl z-50 animate-in slide-in-from-bottom duration-300">
-          <div className="flex items-start gap-3">
-            <span className="text-xl">📝</span>
-            <div className="flex-1 min-w-0">
-              <h4 className="text-xs font-bold text-white uppercase tracking-wider">Draft Check-In Found</h4>
-              <p className="text-[11px] text-slate-400 mt-1">You have unsaved check-in details. Would you like to restore them?</p>
-              <div className="flex gap-2 mt-3">
-                <button
-                  type="button"
-                  onClick={handleRestoreDraft}
-                  className="flex-1 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-[10px] font-bold transition-all shadow-md shadow-indigo-600/10 cursor-pointer"
-                >
-                  Restore Draft
-                </button>
-                <button
-                  type="button"
-                  onClick={handleDiscardDraft}
-                  className="flex-1 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-lg text-[10px] font-semibold transition-colors cursor-pointer"
-                >
-                  Start Fresh
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Room Shift Modal */}
+      <RoomShiftModal
+        isOpen={shiftModalOpen}
+        onClose={() => setShiftModalOpen(false)}
+        booking={shiftBookingData}
+        currentRoom={selectedRoom}
+        onSuccess={handleShiftSuccess}
+      />
     </div>
   );
 };

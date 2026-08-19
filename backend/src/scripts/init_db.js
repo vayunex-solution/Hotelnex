@@ -145,6 +145,36 @@ const mysqlTableQueries = [
         INDEX idx_companions_guest_id (guest_id)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `
+  },
+  {
+    name: 'room_transfers',
+    sql: `
+      CREATE TABLE IF NOT EXISTS room_transfers (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        hotel_id INT NOT NULL,
+        booking_id INT NOT NULL,
+        guest_id INT NOT NULL,
+        from_room_id INT NOT NULL,
+        to_room_id INT NOT NULL,
+        reason_category VARCHAR(100) NOT NULL,
+        reason_details TEXT NULL,
+        mark_old_room_maintenance TINYINT(1) NOT NULL DEFAULT 1,
+        rate_policy ENUM('keep_current', 'apply_new') NOT NULL DEFAULT 'keep_current',
+        old_room_rate DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+        new_room_rate DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+        rate_difference DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+        transferred_by INT NOT NULL,
+        transferred_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT fk_rt_hotel FOREIGN KEY (hotel_id) REFERENCES hotels(id) ON DELETE CASCADE,
+        CONSTRAINT fk_rt_booking FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE CASCADE,
+        CONSTRAINT fk_rt_guest FOREIGN KEY (guest_id) REFERENCES guests(id) ON DELETE CASCADE,
+        CONSTRAINT fk_rt_from_room FOREIGN KEY (from_room_id) REFERENCES rooms(id) ON DELETE RESTRICT,
+        CONSTRAINT fk_rt_to_room FOREIGN KEY (to_room_id) REFERENCES rooms(id) ON DELETE RESTRICT,
+        CONSTRAINT fk_rt_user FOREIGN KEY (transferred_by) REFERENCES users(id) ON DELETE RESTRICT,
+        INDEX idx_rt_hotel_booking (hotel_id, booking_id),
+        INDEX idx_rt_transferred_at (transferred_at)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `
   }
 ];
 
