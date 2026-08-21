@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import api from '../../services/api.js';
 import InvoiceModal from '../../components/InvoiceModal.jsx';
 import RoomShiftModal from '../../components/RoomShiftModal.jsx';
+import CheckoutSettlementModal from '../../components/CheckoutSettlementModal.jsx';
 import {
   Plus, Check, X, Loader2, AlertCircle, Search,
   User, Phone, MapPin, Calendar, Camera,
@@ -214,6 +215,8 @@ const Bookings = () => {
   const [hasExpectedCheckout, setHasExpectedCheckout] = useState(true);
   const [roomRate, setRoomRate]                   = useState('');
   const [advancePaid, setAdvancePaid]             = useState('0');
+  const [advancePaymentMode, setAdvancePaymentMode] = useState('Cash');
+  const [advanceTransactionRef, setAdvanceTransactionRef] = useState('');
   const [formLoading, setFormLoading]             = useState(false);
   const [formError, setFormError]                 = useState('');
   const [showDraftBanner, setShowDraftBanner]     = useState(false);
@@ -243,12 +246,14 @@ const Bookings = () => {
           hasExpectedCheckout,
           roomRate,
           advancePaid,
+          advancePaymentMode,
+          advanceTransactionRef,
           companions: companions.map(c => ({ name: c.name, phone: c.phone }))
         };
         localStorage.setItem('bookings_checkin_draft', JSON.stringify(draft));
       }
     }
-  }, [checkinModalOpen, searchQuery, guestFound, guestName, guestPhone, guestAddress, guestDriveLink, selectedRoomId, expectedCheckout, hasExpectedCheckout, roomRate, advancePaid, companions]);
+  }, [checkinModalOpen, searchQuery, guestFound, guestName, guestPhone, guestAddress, guestDriveLink, selectedRoomId, expectedCheckout, hasExpectedCheckout, roomRate, advancePaid, advancePaymentMode, advanceTransactionRef, companions]);
 
   const handleRestoreDraft = () => {
     const saved = localStorage.getItem('bookings_checkin_draft');
@@ -266,6 +271,8 @@ const Bookings = () => {
         setHasExpectedCheckout(draft.hasExpectedCheckout !== undefined ? draft.hasExpectedCheckout : true);
         setRoomRate(draft.roomRate || '');
         setAdvancePaid(draft.advancePaid || '0');
+        setAdvancePaymentMode(draft.advancePaymentMode || 'Cash');
+        setAdvanceTransactionRef(draft.advanceTransactionRef || '');
         setCompanions((draft.companions || []).map(c => ({ name: c.name, phone: c.phone, idFiles: Array(3).fill(null) })));
         setCheckinModalOpen(true);
       } catch (e) {
@@ -1093,6 +1100,35 @@ const Bookings = () => {
                       <input type="number" value={advancePaid} onChange={e => setAdvancePaid(e.target.value)} placeholder="0"
                         className="w-full bg-slate-800/80 border border-slate-700 text-white text-xs rounded-xl px-3 py-3 focus:outline-none focus:border-indigo-500" />
                     </div>
+
+                    {parseFloat(advancePaid) > 0 && (
+                      <div className="col-span-2 bg-slate-800/40 border border-slate-700/60 rounded-xl p-3 space-y-2">
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Advance Payment Mode</label>
+                        <div className="grid grid-cols-4 gap-2">
+                          {['Cash', 'UPI', 'Card', 'Bank_Transfer'].map(mode => (
+                            <button
+                              key={mode}
+                              type="button"
+                              onClick={() => setAdvancePaymentMode(mode)}
+                              className={`py-2 px-1 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
+                                advancePaymentMode === mode
+                                  ? 'bg-indigo-600 border-indigo-500 text-white shadow'
+                                  : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white'
+                              }`}
+                            >
+                              {mode === 'Bank_Transfer' ? 'Bank' : mode}
+                            </button>
+                          ))}
+                        </div>
+                        <input
+                          type="text"
+                          placeholder="Transaction Ref / UTR (Optional)"
+                          value={advanceTransactionRef}
+                          onChange={e => setAdvanceTransactionRef(e.target.value)}
+                          className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-indigo-500"
+                        />
+                      </div>
+                    )}
                     <div className="col-span-2 bg-slate-800/25 border border-slate-800 rounded-xl p-3.5 flex items-center justify-between gap-3 mt-1">
                       <label className="flex items-center gap-2.5 text-xs font-bold text-slate-300 cursor-pointer select-none">
                         <input type="checkbox" checked={hasExpectedCheckout} onChange={e => { setHasExpectedCheckout(e.target.checked); if(!e.target.checked) setExpectedCheckout(''); }}
@@ -1127,85 +1163,24 @@ const Bookings = () => {
         </div>
       )}
 
-      {/* ── CHECKOUT MODAL ─────────────────────────────────────────────────── */}
+      {/* ── CHECKOUT SETTLEMENT MODAL ─────────────────────────────────────── */}
       {checkoutModalOpen && selectedBooking && (
-        <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-4">
-          <div className="bg-slate-950 border border-slate-800 w-full max-w-md rounded-2xl shadow-2xl overflow-hidden">
-            {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-rose-500/5">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-rose-500/15 border border-rose-500/25 flex items-center justify-center">
-                  <LogOut className="w-4 h-4 text-rose-400" />
-                </div>
-                <div>
-                  <h2 className="text-base font-bold text-white">Settle &amp; Checkout</h2>
-                  <p className="text-[10px] text-slate-500">Room {selectedBooking.room_number} · {selectedBooking.guest_name}</p>
-                </div>
-              </div>
-              <button onClick={() => { setCheckoutModalOpen(false); setSelectedBooking(null); }}
-                className="w-8 h-8 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-400 hover:text-white">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="px-6 py-5 space-y-4">
-              {formError && (
-                <div className="p-3.5 bg-red-500/8 border border-red-500/20 rounded-xl text-red-400 text-xs flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 shrink-0" /><span>{formError}</span>
-                </div>
-              )}
-
-              {/* Guest info */}
-              <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-2 text-sm">
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">Guest Details</p>
-                {[['Name', selectedBooking.guest_name], ['Phone', selectedBooking.guest_phone], selectedBooking.guest_address && ['Address', selectedBooking.guest_address]].filter(Boolean).map(([label, value]) => (
-                  <div key={label} className="flex justify-between">
-                    <span className="text-slate-500">{label}</span>
-                    <span className="font-semibold text-slate-200 text-right max-w-[200px] truncate">{value}</span>
-                  </div>
-                ))}
-              </div>
-
-              {/* Bill summary */}
-              <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
-                <div className="px-4 py-2.5 bg-slate-800/40 border-b border-slate-800">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Bill Breakdown</p>
-                </div>
-                <div className="px-4 py-4 space-y-2.5 text-sm">
-                  <div className="flex justify-between text-slate-300">
-                    <span>Rate / night</span>
-                    <span>₹{parseFloat(selectedBooking.room_rate).toLocaleString('en-IN')}</span>
-                  </div>
-                  <div className="flex justify-between text-slate-300">
-                    <span>{staySummary.nights} night{staySummary.nights !== 1 ? 's' : ''} × ₹{parseFloat(selectedBooking.room_rate).toLocaleString('en-IN')}</span>
-                    <span className="font-bold">₹{staySummary.total.toLocaleString('en-IN')}</span>
-                  </div>
-                  <div className="flex justify-between text-emerald-400">
-                    <span>Advance paid</span>
-                    <span>− ₹{parseFloat(selectedBooking.advance_paid).toLocaleString('en-IN')}</span>
-                  </div>
-                  <div className={`flex justify-between pt-3 border-t border-slate-800 text-base font-bold ${staySummary.balance > 0 ? 'text-rose-400' : 'text-emerald-400'}`}>
-                    <span>Balance Due</span>
-                    <span className="text-xl font-black">₹{staySummary.balance.toLocaleString('en-IN')}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Confirm */}
-              <div className="flex gap-3">
-                <button onClick={() => { setCheckoutModalOpen(false); setSelectedBooking(null); }}
-                  className="flex-1 py-3 border border-slate-700 hover:bg-slate-800 text-slate-300 rounded-xl text-sm font-semibold transition-colors">
-                  Cancel
-                </button>
-                <button onClick={handleCheckOutSubmit} disabled={formLoading}
-                  className="flex-1 py-3 bg-rose-600 hover:bg-rose-500 disabled:bg-rose-900 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2 shadow-lg shadow-rose-500/20 transition-all">
-                  {formLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                  Confirm Checkout
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <CheckoutSettlementModal
+          isOpen={checkoutModalOpen}
+          onClose={() => {
+            setCheckoutModalOpen(false);
+            setSelectedBooking(null);
+          }}
+          bookingId={selectedBooking.id}
+          onSuccess={() => {
+            fetchActiveBookings();
+            fetchRooms();
+          }}
+          onOpenInvoice={(bId) => {
+            setInvoiceBookingId(bId);
+            setInvoiceModalOpen(true);
+          }}
+        />
       )}
 
       {/* ── DOCUMENT PREVIEW ───────────────────────────────────────────────── */}

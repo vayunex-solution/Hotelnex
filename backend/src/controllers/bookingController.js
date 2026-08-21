@@ -1,7 +1,8 @@
 import pool from '../config/db.js';
 import { getSignedFileUrl } from '../config/s3.js';
 import eventBus from '../core/eventbus/eventBus.js';
-
+import transactionManager from '../core/database/transactionManager.js';
+import logger from '../core/logger/logger.js';
 
 const mapBookingUrls = async (booking) => {
   if (!booking) return null;
@@ -16,11 +17,15 @@ const mapBookingUrls = async (booking) => {
   };
 };
 
-// ─── Check-In Flow (Create Booking + Occupy Room) ───────────────────────────
+// ─── Check-In Flow (Atomic Booking + Room Occupation + Payment Recording) ───
 export const checkIn = async (req, res) => {
-  const { room_id, guest_id, expected_checkout, room_rate, advance_paid, companion_ids } = req.body;
+  const { 
+    room_id, guest_id, expected_checkout, room_rate, advance_paid, 
+    advance_payment_mode, advance_transaction_ref, companion_ids, idempotency_key 
+  } = req.body;
   const hotel_id = req.user.hotelId;
-  const receptionist_id = req.user.userId;
+  const tenant_id = req.user.tenantId || null;
+  const receptionist_id = req.user.id || req.user.userId;
 
   if (!room_id || !guest_id || !room_rate) {
     return res.status(400).json({
@@ -29,201 +34,475 @@ export const checkIn = async (req, res) => {
     });
   }
 
+  const validModes = ['Cash', 'UPI', 'Card', 'Bank_Transfer', 'Other'];
+  const paymentMode = validModes.includes(advance_payment_mode) ? advance_payment_mode : 'Cash';
+  const advance = advance_paid ? parseFloat(advance_paid) : 0.00;
+
   try {
-    // 1. Verify Room status is 'Available'
-    const [rooms] = await pool.execute(
-      'SELECT id, status, base_rate, room_number FROM rooms WHERE id = ? AND hotel_id = ? LIMIT 1',
-      [room_id, hotel_id]
-    );
-
-    if (rooms.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: 'Room not found.',
-      });
-    }
-
-    const room = rooms[0];
-    if (room.status !== 'Available') {
-      return res.status(400).json({
-        success: false,
-        message: `Room ${room.room_number} is currently ${room.status} and cannot be checked in.`,
-      });
-    }
-
-    // 2. Verify Guest exists
-    const [guests] = await pool.execute(
-      'SELECT id FROM guests WHERE id = ? AND hotel_id = ? LIMIT 1',
-      [guest_id, hotel_id]
-    );
-
-    if (guests.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: 'Guest profile not found.',
-      });
-    }
-
-    // 3. Calculate dynamic total amount
-    const checkInTime = new Date();
-    let checkOutTime;
-    let nights = 1;
-
-    if (expected_checkout) {
-      checkOutTime = new Date(expected_checkout);
-      const diffTime = Math.abs(checkOutTime - checkInTime);
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      nights = diffDays > 0 ? diffDays : 1;
-    } else {
-      // Open stay: Use a far-future date (2099-12-31) as placeholder
-      checkOutTime = new Date('2099-12-31T23:59:59');
-    }
-
-    const total_amount = parseFloat(room_rate) * nights;
-    const advance = advance_paid ? parseFloat(advance_paid) : 0.00;
-
-    // 4. Create Booking and update Room status (Use Transaction logic)
-    // NOTE: SQLite doesn't natively support START TRANSACTION in some connection pool mocks, 
-    // but running individual queries sequentially works, and we can simulate a manual rollback if needed.
-    // For safety across dual db environments, we execute queries in order:
-    await pool.execute(
-      'UPDATE rooms SET status = "Occupied" WHERE id = ?',
-      [room_id]
-    );
-
-    const [bookingResult] = await pool.execute(
-      `INSERT INTO bookings 
-       (hotel_id, room_id, guest_id, receptionist_id, check_in_time, expected_check_out, room_rate, total_amount, advance_paid, status) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, "Active")`,
-      [
-        hotel_id,
-        room_id,
-        guest_id,
-        receptionist_id,
-        checkInTime.toISOString().slice(0, 19).replace('T', ' '), // Convert to MySQL datetime format
-        checkOutTime.toISOString().slice(0, 19).replace('T', ' '),
-        parseFloat(room_rate),
-        total_amount,
-        advance,
-      ]
-    );
-
-    const bookingId = bookingResult.insertId;
-
-    // 5. Store companion guests if provided (with tenant scope validation)
-    if (Array.isArray(companion_ids) && companion_ids.length > 0) {
-      // Filter out companion IDs that do not belong to the current hotel_id
-      const placeholders = companion_ids.map(() => '?').join(',');
-      const [matchedCompanions] = await pool.execute(
-        `SELECT id FROM guests WHERE id IN (${placeholders}) AND hotel_id = ?`,
-        [...companion_ids, hotel_id]
+    const result = await transactionManager.runInTransaction(async (conn) => {
+      // 1. Verify and Lock Room
+      const [rooms] = await conn.query(
+        'SELECT id, status, base_rate, room_number FROM rooms WHERE id = ? AND hotel_id = ? FOR UPDATE',
+        [room_id, hotel_id]
       );
-      const validCompanionIds = matchedCompanions.map(c => c.id);
 
-      for (const cId of validCompanionIds) {
-        try {
-          await pool.execute(
-            'INSERT INTO booking_companions (booking_id, guest_id) VALUES (?, ?)',
-            [bookingId, cId]
+      if (rooms.length === 0) {
+        throw new Error('Room not found.');
+      }
+
+      const room = rooms[0];
+      if (room.status !== 'Available') {
+        throw new Error(`Room ${room.room_number} is currently ${room.status} and cannot be checked in.`);
+      }
+
+      // 2. Verify Guest exists
+      const [guests] = await conn.query(
+        'SELECT id, full_name, phone_number FROM guests WHERE id = ? AND hotel_id = ? LIMIT 1',
+        [guest_id, hotel_id]
+      );
+
+      if (guests.length === 0) {
+        throw new Error('Guest profile not found.');
+      }
+
+      // 3. Calculate dynamic total amount
+      const checkInTime = new Date();
+      let checkOutTime;
+      let nights = 1;
+
+      if (expected_checkout) {
+        checkOutTime = new Date(expected_checkout);
+        const diffTime = Math.abs(checkOutTime - checkInTime);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        nights = diffDays > 0 ? diffDays : 1;
+      } else {
+        checkOutTime = new Date('2099-12-31T23:59:59');
+      }
+
+      const total_amount = parseFloat(room_rate) * nights;
+      const paymentStatus = advance >= total_amount ? 'Paid' : (advance > 0 ? 'Partial' : 'Unpaid');
+
+      // 4. Update Room status to Occupied
+      await conn.query(
+        'UPDATE rooms SET status = "Occupied" WHERE id = ? AND hotel_id = ?',
+        [room_id, hotel_id]
+      );
+
+      // 5. Create Booking
+      const [bookingResult] = await conn.query(
+        `INSERT INTO bookings 
+         (hotel_id, room_id, guest_id, receptionist_id, check_in_time, expected_check_out, room_rate, total_amount, advance_paid, status, payment_status) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, "Active", ?)`,
+        [
+          hotel_id,
+          room_id,
+          guest_id,
+          receptionist_id,
+          checkInTime.toISOString().slice(0, 19).replace('T', ' '),
+          checkOutTime.toISOString().slice(0, 19).replace('T', ' '),
+          parseFloat(room_rate),
+          total_amount,
+          advance,
+          paymentStatus
+        ]
+      );
+
+      const bookingId = bookingResult.insertId;
+
+      // 6. Record Advance Payment in Immutable Payments Ledger (if advance > 0)
+      let paymentId = null;
+      if (advance > 0) {
+        const [payResult] = await conn.query(
+          `INSERT INTO payments 
+             (tenant_id, hotel_id, booking_id, guest_id, amount, payment_type, payment_mode, transaction_ref, notes, collected_by, status, idempotency_key)
+           VALUES (?, ?, ?, ?, ?, 'Advance', ?, ?, 'Advance collected at check-in', ?, 'completed', ?)`,
+          [
+            tenant_id,
+            hotel_id,
+            bookingId,
+            guest_id,
+            advance,
+            paymentMode,
+            advance_transaction_ref || null,
+            receptionist_id,
+            idempotency_key || null
+          ]
+        );
+        paymentId = payResult.insertId;
+
+        // If Cash, update active cash drawer
+        if (paymentMode === 'Cash') {
+          await conn.query(
+            `UPDATE cash_drawers 
+             SET cash_collections = cash_collections + ?, expected_cash = expected_cash + ?
+             WHERE hotel_id = ? AND status = 'open'`,
+            [advance, advance, hotel_id]
           );
-        } catch (e) {
-          console.warn('[BookingController] companion insert warn:', e.message);
         }
       }
-    }
 
-    // Publish BookingCheckedIn event to trigger automated workflows
-    eventBus.publish('BookingCheckedIn', { bookingId }, {
-      tenantId: req.user.tenantId || null,
-      propertyId: hotel_id,
-      userId: req.user.userId
-    }).catch(err => console.error('[BookingController] EventBus publish failed:', err.message));
+      // 7. Store companion guests if provided
+      if (Array.isArray(companion_ids) && companion_ids.length > 0) {
+        const placeholders = companion_ids.map(() => '?').join(',');
+        const [matchedCompanions] = await conn.query(
+          `SELECT id FROM guests WHERE id IN (${placeholders}) AND hotel_id = ?`,
+          [...companion_ids, hotel_id]
+        );
+        const validCompanionIds = matchedCompanions.map(c => c.id);
 
-    return res.status(201).json({
-      success: true,
-      message: 'Check-in completed successfully. Room status updated to Occupied.',
-      bookingId,
-      bookingDetails: {
-        roomId: room_id,
-        guestId: guest_id,
-        companions: companion_ids || [],
+        for (const cId of validCompanionIds) {
+          try {
+            await conn.query(
+              'INSERT INTO booking_companions (booking_id, guest_id) VALUES (?, ?)',
+              [bookingId, cId]
+            );
+          } catch (e) {
+            console.warn('[BookingController] companion insert warn:', e.message);
+          }
+        }
+      }
+
+      return {
+        bookingId,
+        paymentId,
         nights,
         roomRate: room_rate,
         totalAmount: total_amount,
         advancePaid: advance,
         pendingAmount: total_amount - advance,
+        paymentStatus,
+        paymentMode: advance > 0 ? paymentMode : null
+      };
+    });
+
+    // Publish BookingCheckedIn event
+    if (eventBus && typeof eventBus.publish === 'function') {
+      eventBus.publish('BookingCheckedIn', { bookingId: result.bookingId }, {
+        tenantId: req.user.tenantId || null,
+        propertyId: hotel_id,
+        userId: req.user.userId || req.user.id
+      }).catch(err => console.error('[BookingController] EventBus publish failed:', err.message));
+    }
+
+    return res.status(201).json({
+      success: true,
+      message: 'Check-in completed successfully. Room status updated to Occupied.',
+      bookingId: result.bookingId,
+      bookingDetails: {
+        roomId: room_id,
+        guestId: guest_id,
+        companions: companion_ids || [],
+        nights: result.nights,
+        roomRate: result.roomRate,
+        totalAmount: result.totalAmount,
+        advancePaid: result.advancePaid,
+        pendingAmount: result.pendingAmount,
+        paymentStatus: result.paymentStatus,
+        paymentMode: result.paymentMode
       }
     });
+
   } catch (error) {
-    console.error('[BookingController] checkIn error:', error.message);
-    return res.status(500).json({
+    logger.error('[BookingController] checkIn error:', error.message);
+    return res.status(400).json({
       success: false,
-      message: 'An error occurred during check-in.',
+      message: error.message || 'An error occurred during check-in.',
     });
   }
 };
 
-// ─── Check-Out Flow (Calculate Pending Balance + Complete Booking + Release Room) 
-export const checkOut = async (req, res) => {
+// ─── Check-Out Settlement Preview ───────────────────────────────────────────
+export const getCheckoutPreview = async (req, res) => {
   const { id } = req.params;
   const hotel_id = req.user.hotelId;
 
   try {
-    // 1. Fetch the active booking
     const [bookings] = await pool.query(
-      'SELECT id, room_id, guest_id, check_in_time, room_rate, total_amount, advance_paid, status FROM bookings WHERE id = ? AND hotel_id = ? LIMIT 1',
+      `SELECT 
+         b.id, b.hotel_id, b.room_id, b.guest_id, b.check_in_time, b.expected_check_out,
+         b.room_rate, b.total_amount, b.advance_paid, b.status, b.payment_status,
+         g.full_name AS guest_name, g.phone_number AS guest_phone,
+         r.room_number, r.category AS room_category
+       FROM bookings b
+       JOIN guests g ON b.guest_id = g.id
+       JOIN rooms r ON b.room_id = r.id
+       WHERE b.id = ? AND b.hotel_id = ? LIMIT 1`,
       [id, hotel_id]
     );
 
     if (bookings.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: 'Active booking not found.',
-      });
+      return res.status(404).json({ success: false, message: 'Active booking not found.' });
     }
 
     const booking = bookings[0];
-    if (booking.status !== 'Active') {
-      return res.status(400).json({
-        success: false,
-        message: `This booking is already in status: ${booking.status}.`,
-      });
-    }
-
-    // 2. Perform dynamic checkout calculations
     const checkOutTime = new Date();
     const checkInTime = new Date(booking.check_in_time);
-    
+
     // Calculate actual nights (minimum 1 night)
     const diffTime = Math.abs(checkOutTime - checkInTime);
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    const actualNights = diffDays > 0 ? diffDays : 1;
+    const nightsStayed = diffDays > 0 ? diffDays : 1;
 
-    const rate = parseFloat(booking.room_rate) || 0;
-    const advance = parseFloat(booking.advance_paid) || 0;
-    const originalTotal = parseFloat(booking.total_amount) || (rate * actualNights);
+    const dailyRate = parseFloat(booking.room_rate) || 0;
+    const grossCharges = dailyRate * nightsStayed;
 
-    // Recalculate total amount
-    const actualTotalAmount = rate > 0 ? (rate * actualNights) : originalTotal;
-    const pendingBalance = Math.max(0, actualTotalAmount - advance);
-
-    // 3. Update booking status and release room
-    await pool.query(
-      'UPDATE rooms SET status = "Available" WHERE id = ?',
-      [booking.room_id]
+    // Fetch prior completed payments from payments ledger
+    const [payStats] = await pool.query(
+      `SELECT 
+         COALESCE(SUM(CASE WHEN payment_type != 'Refund' THEN amount ELSE -amount END), 0) AS total_paid
+       FROM payments
+       WHERE booking_id = ? AND hotel_id = ? AND status = 'completed'`,
+      [id, hotel_id]
     );
 
-    await pool.query(
-      `UPDATE bookings 
-       SET actual_check_out = NOW(), total_amount = ?, status = "Completed" 
-       WHERE id = ?`,
-      [
-        actualTotalAmount,
-        id
-      ]
-    );
+    const paidFromLedger = parseFloat(payStats[0]?.total_paid || 0);
+    const advancePaid = parseFloat(booking.advance_paid) || 0;
+    const effectivePaid = Math.max(paidFromLedger, advancePaid);
 
-    // Publish BookingCheckedOut event to trigger automated workflows
+    // Fetch discounts / adjustments
+    const [adjStats] = await pool.query(
+      `SELECT COALESCE(SUM(amount), 0) AS total_discounts
+       FROM billing_adjustments
+       WHERE booking_id = ? AND hotel_id = ?`,
+      [id, hotel_id]
+    );
+    const totalDiscounts = parseFloat(adjStats[0]?.total_discounts || 0);
+
+    const balanceDue = Math.max(0, grossCharges - (effectivePaid + totalDiscounts));
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        bookingId: booking.id,
+        guestName: booking.guest_name,
+        guestPhone: booking.guest_phone,
+        roomNumber: booking.room_number,
+        roomCategory: booking.room_category,
+        checkInTime: booking.check_in_time,
+        checkOutTime: checkOutTime.toISOString(),
+        nightsStayed,
+        dailyRate,
+        grossCharges,
+        advancePaid,
+        totalPaidSoFar: effectivePaid,
+        totalDiscounts,
+        balanceDue,
+        status: booking.status,
+        paymentStatus: booking.payment_status
+      }
+    });
+
+  } catch (error) {
+    logger.error('[BookingController] getCheckoutPreview error:', error);
+    return res.status(500).json({ success: false, message: 'Failed to calculate checkout preview.' });
+  }
+};
+
+// ─── Atomic Multi-Strategy Check-Out Settlement ─────────────────────────────
+export const checkOut = async (req, res) => {
+  const { id } = req.params;
+  const hotel_id = req.user.hotelId;
+  const tenant_id = req.user.tenantId || null;
+  const userId = req.user.id || req.user.userId;
+
+  const {
+    settlement_strategy = 'full_payment', // 'full_payment', 'split_payment', 'credit_khata', 'discount_waiver', 'zero_balance'
+    payments = [],                        // Array of { mode, amount, transaction_ref, notes }
+    discount = null,                      // { amount, reason }
+    receivable = null,                    // { due_date, debtor_name, debtor_phone, notes }
+    settlement_notes = null,
+    idempotency_key = null
+  } = req.body;
+
+  try {
+    const result = await transactionManager.runInTransaction(async (conn) => {
+      // 1. Lock and fetch booking
+      const [bookings] = await conn.query(
+        `SELECT id, tenant_id, hotel_id, room_id, guest_id, check_in_time, room_rate, total_amount, advance_paid, status, payment_status 
+         FROM bookings 
+         WHERE id = ? AND hotel_id = ? FOR UPDATE`,
+        [id, hotel_id]
+      );
+
+      if (bookings.length === 0) {
+        throw new Error('Active booking not found.');
+      }
+
+      const booking = bookings[0];
+      if (booking.status !== 'Active') {
+        throw new Error(`This booking is already in status: '${booking.status}'.`);
+      }
+
+      // 2. Perform authoritative stay & balance calculations
+      const checkOutTime = new Date();
+      const checkInTime = new Date(booking.check_in_time);
+      const diffTime = Math.abs(checkOutTime - checkInTime);
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      const actualNights = diffDays > 0 ? diffDays : 1;
+
+      const dailyRate = parseFloat(booking.room_rate) || 0;
+      const actualGrossAmount = dailyRate * actualNights;
+
+      // Prior payments from payments ledger
+      const [payStats] = await conn.query(
+        `SELECT COALESCE(SUM(CASE WHEN payment_type != 'Refund' THEN amount ELSE -amount END), 0) AS total_paid
+         FROM payments
+         WHERE booking_id = ? AND hotel_id = ? AND status = 'completed'`,
+        [id, hotel_id]
+      );
+      const paidFromLedger = parseFloat(payStats[0]?.total_paid || 0);
+      const priorAdvance = parseFloat(booking.advance_paid) || 0;
+      const totalPaidPrior = Math.max(paidFromLedger, priorAdvance);
+
+      let outstandingBalance = Math.max(0, actualGrossAmount - totalPaidPrior);
+
+      // 3. Process Discount / Adjustment if authorized
+      let discountAmountApplied = 0.00;
+      if (discount && parseFloat(discount.amount) > 0) {
+        discountAmountApplied = Math.min(parseFloat(discount.amount), outstandingBalance);
+        await conn.query(
+          `INSERT INTO billing_adjustments 
+             (tenant_id, hotel_id, booking_id, guest_id, type, amount, reason, created_by, approved_by)
+           VALUES (?, ?, ?, ?, 'discount', ?, ?, ?, ?)`,
+          [
+            tenant_id,
+            hotel_id,
+            booking.id,
+            booking.guest_id,
+            discountAmountApplied,
+            discount.reason ? discount.reason.trim() : 'Checkout discount adjustment',
+            userId,
+            userId
+          ]
+        );
+        outstandingBalance -= discountAmountApplied;
+      }
+
+      // 4. Process Payments (Full / Split)
+      const recordedPayments = [];
+      let totalCollectedAtCheckout = 0.00;
+
+      if (Array.isArray(payments) && payments.length > 0 && outstandingBalance > 0) {
+        const validModes = ['Cash', 'UPI', 'Card', 'Bank_Transfer', 'Other'];
+        
+        for (let i = 0; i < payments.length; i++) {
+          const p = payments[i];
+          const pAmount = parseFloat(p.amount) || 0.00;
+          if (pAmount <= 0) continue;
+
+          const pMode = validModes.includes(p.mode) ? p.mode : 'Cash';
+          const pRef = p.transaction_ref || null;
+          const pNotes = p.notes ? p.notes.trim() : 'Checkout settlement payment';
+          const pIdempKey = idempotency_key ? `${idempotency_key}_${i}` : null;
+
+          const [payInsert] = await conn.query(
+            `INSERT INTO payments 
+               (tenant_id, hotel_id, booking_id, guest_id, amount, payment_type, payment_mode, transaction_ref, notes, collected_by, status, idempotency_key)
+             VALUES (?, ?, ?, ?, ?, 'Checkout_Settlement', ?, ?, ?, ?, 'completed', ?)`,
+            [
+              tenant_id,
+              hotel_id,
+              booking.id,
+              booking.guest_id,
+              pAmount,
+              pMode,
+              pRef,
+              pNotes,
+              userId,
+              pIdempKey
+            ]
+          );
+
+          recordedPayments.push({
+            id: payInsert.insertId,
+            mode: pMode,
+            amount: pAmount,
+            ref: pRef
+          });
+
+          totalCollectedAtCheckout += pAmount;
+
+          // If Cash, update active cash drawer
+          if (pMode === 'Cash') {
+            await conn.query(
+              `UPDATE cash_drawers 
+               SET cash_collections = cash_collections + ?, expected_cash = expected_cash + ?
+               WHERE hotel_id = ? AND status = 'open'`,
+              [pAmount, pAmount, hotel_id]
+            );
+          }
+        }
+
+        outstandingBalance = Math.max(0, outstandingBalance - totalCollectedAtCheckout);
+      }
+
+      // 5. Process Credit Khata / Receivable if remaining balance > 0
+      let receivableId = null;
+      let finalPaymentStatus = 'Paid';
+
+      if (outstandingBalance > 0) {
+        finalPaymentStatus = 'Unpaid';
+        const debtorName = receivable?.debtor_name || null;
+        const debtorPhone = receivable?.debtor_phone || null;
+        const dueDate = receivable?.due_date || null;
+        const recvNotes = receivable?.notes || settlement_notes || 'Outstanding balance deferred at checkout';
+
+        const [recvResult] = await conn.query(
+          `INSERT INTO receivables 
+             (tenant_id, hotel_id, booking_id, guest_id, original_amount, paid_amount, outstanding_amount, status, due_date, debtor_name, debtor_phone, notes, created_by)
+           VALUES (?, ?, ?, ?, ?, 0.00, ?, 'open', ?, ?, ?, ?, ?)`,
+          [
+            tenant_id,
+            hotel_id,
+            booking.id,
+            booking.guest_id,
+            outstandingBalance,
+            outstandingBalance,
+            dueDate,
+            debtorName,
+            debtorPhone,
+            recvNotes,
+            userId
+          ]
+        );
+        receivableId = recvResult.insertId;
+      }
+
+      // 6. Release Room
+      await conn.query(
+        'UPDATE rooms SET status = "Available" WHERE id = ? AND hotel_id = ?',
+        [booking.room_id, hotel_id]
+      );
+
+      // 7. Update Booking record
+      await conn.query(
+        `UPDATE bookings 
+         SET actual_check_out = NOW(), total_amount = ?, status = 'Completed', payment_status = ?, settlement_notes = ?
+         WHERE id = ? AND hotel_id = ?`,
+        [
+          actualGrossAmount,
+          finalPaymentStatus,
+          settlement_notes ? settlement_notes.trim() : null,
+          booking.id,
+          hotel_id
+        ]
+      );
+
+      return {
+        bookingId: booking.id,
+        nightsStayed: actualNights,
+        grossCharges: actualGrossAmount,
+        totalPaidPrior,
+        discountApplied: discountAmountApplied,
+        collectedAtCheckout: totalCollectedAtCheckout,
+        remainingUnpaid: outstandingBalance,
+        receivableId,
+        paymentStatus: finalPaymentStatus,
+        recordedPayments
+      };
+    });
+
+    // Publish Events
     if (eventBus && typeof eventBus.publish === 'function') {
       eventBus.publish('BookingCheckedOut', { bookingId: id }, {
         tenantId: req.user?.tenantId || null,
@@ -234,18 +513,15 @@ export const checkOut = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: 'Check-out finalized. Room status updated to Available.',
-      checkoutDetails: {
-        bookingId: id,
-        nightsStayed: actualNights,
-        totalPaid: actualTotalAmount,
-        advancePaid: advance,
-        settledAmount: pendingBalance,
-      }
+      message: result.remainingUnpaid > 0 
+        ? `Check-out completed. Room released. ₹${result.remainingUnpaid} recorded in Debtors Khata.`
+        : 'Check-out & payment settlement finalized successfully. Room is now Available.',
+      checkoutDetails: result
     });
+
   } catch (error) {
-    console.error('[BookingController] checkOut error:', error);
-    return res.status(500).json({
+    logger.error('[BookingController] checkOut error:', error.message);
+    return res.status(400).json({
       success: false,
       message: error.message || 'An error occurred during check-out.',
     });
@@ -476,7 +752,7 @@ export const getBookingDetails = async (req, res) => {
     // 1. Fetch primary booking + guest + room
     const [rows] = await pool.execute(
       `SELECT b.id, b.check_in_time, b.expected_check_out, b.actual_check_out,
-              b.room_rate, b.total_amount, b.advance_paid, b.status, b.created_at,
+              b.room_rate, b.total_amount, b.advance_paid, b.status, b.payment_status, b.settlement_notes, b.created_at,
               g.full_name AS guest_name, g.phone_number AS guest_phone,
               g.address AS guest_address, g.document_url AS guest_drive_link,
               r.room_number, r.category AS room_category
@@ -494,12 +770,39 @@ export const getBookingDetails = async (req, res) => {
 
     const booking = rows[0];
 
-    // 2. Fetch companion guests (secured by matching guest hotel_id)
+    // 2. Fetch companion guests
     const [companions] = await pool.execute(
       `SELECT g.full_name, g.phone_number, g.address
        FROM booking_companions bc
        JOIN guests g ON bc.guest_id = g.id
        WHERE bc.booking_id = ? AND g.hotel_id = ?`,
+      [id, hotel_id]
+    );
+
+    // 3. Fetch itemized payments from ledger
+    const [payments] = await pool.execute(
+      `SELECT id, amount, payment_type, payment_mode, transaction_ref, notes, status, created_at
+       FROM payments
+       WHERE booking_id = ? AND hotel_id = ?
+       ORDER BY created_at ASC`,
+      [id, hotel_id]
+    );
+
+    // 4. Fetch billing adjustments / discounts
+    const [adjustments] = await pool.execute(
+      `SELECT id, type, amount, reason, created_at
+       FROM billing_adjustments
+       WHERE booking_id = ? AND hotel_id = ?
+       ORDER BY created_at ASC`,
+      [id, hotel_id]
+    );
+
+    // 5. Fetch receivable / debtor record (if any)
+    const [receivables] = await pool.execute(
+      `SELECT id, original_amount, paid_amount, outstanding_amount, status, due_date
+       FROM receivables
+       WHERE booking_id = ? AND hotel_id = ?
+       LIMIT 1`,
       [id, hotel_id]
     );
 
@@ -509,6 +812,9 @@ export const getBookingDetails = async (req, res) => {
         ...booking,
         invoice_id: `INV-${String(booking.id).padStart(5, '0')}`,
         companions,
+        payments,
+        adjustments,
+        receivable: receivables.length > 0 ? receivables[0] : null
       },
     });
   } catch (error) {

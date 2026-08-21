@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api.js';
 import RoomShiftModal from '../../components/RoomShiftModal.jsx';
+import CheckoutSettlementModal from '../../components/CheckoutSettlementModal.jsx';
 import {
   BedDouble, Search, X, Loader2, Wrench, Check,
   DollarSign, Calendar, Phone, MapPin, User, FileText,
@@ -149,7 +150,11 @@ const Dashboard = () => {
   const [hasExpectedCheckout, setHasExpectedCheckout] = useState(true);
   const [roomRate, setRoomRate]                 = useState('');
   const [advancePaid, setAdvancePaid]           = useState('0');
+  const [advancePaymentMode, setAdvancePaymentMode] = useState('Cash');
+  const [advanceTransactionRef, setAdvanceTransactionRef] = useState('');
   const [activeBooking, setActiveBooking]       = useState(null);
+  const [checkoutModalOpen, setCheckoutModalOpen] = useState(false);
+  const [checkoutBookingId, setCheckoutBookingId] = useState(null);
 
   useEffect(() => () => { cameraStream?.getTracks().forEach(t => t.stop()); }, [cameraStream]);
 
@@ -505,6 +510,8 @@ const Dashboard = () => {
         expected_checkout: hasExpectedCheckout ? expectedCheckout : null,
         room_rate: parseFloat(roomRate),
         advance_paid: parseFloat(advancePaid) || 0,
+        advance_payment_mode: advancePaymentMode,
+        advance_transaction_ref: advanceTransactionRef.trim() || null,
         companion_ids: companionGuestIds
       });
       localStorage.removeItem('dashboard_checkin_draft');
@@ -1004,6 +1011,35 @@ const Dashboard = () => {
                             className="w-full bg-slate-800/80 border border-slate-700 text-white text-sm rounded-xl pl-9 pr-4 py-3 focus:outline-none focus:border-indigo-500" />
                         </div>
                       </div>
+
+                      {parseFloat(advancePaid) > 0 && (
+                        <div className="col-span-2 bg-slate-800/40 border border-slate-700/60 rounded-xl p-3 space-y-2">
+                          <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Advance Payment Mode</label>
+                          <div className="grid grid-cols-4 gap-2">
+                            {['Cash', 'UPI', 'Card', 'Bank_Transfer'].map(mode => (
+                              <button
+                                key={mode}
+                                type="button"
+                                onClick={() => setAdvancePaymentMode(mode)}
+                                className={`py-2 px-1 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
+                                  advancePaymentMode === mode
+                                    ? 'bg-indigo-600 border-indigo-500 text-white shadow'
+                                    : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white'
+                                }`}
+                              >
+                                {mode === 'Bank_Transfer' ? 'Bank' : mode}
+                              </button>
+                            ))}
+                          </div>
+                          <input
+                            type="text"
+                            placeholder="Transaction Ref / UTR (Optional)"
+                            value={advanceTransactionRef}
+                            onChange={e => setAdvanceTransactionRef(e.target.value)}
+                            className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-indigo-500"
+                          />
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -1112,11 +1148,13 @@ const Dashboard = () => {
                     </button>
                     <button
                       type="button"
-                      onClick={handleCheckOutSubmit}
-                      disabled={drawerLoading}
-                      className="flex-[2] py-3.5 bg-rose-600 hover:bg-rose-500 disabled:bg-rose-900 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-lg shadow-rose-500/20 transition-all cursor-pointer"
+                      onClick={() => {
+                        setCheckoutBookingId(activeBooking.id);
+                        setCheckoutModalOpen(true);
+                      }}
+                      className="flex-[2] py-3.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2 shadow-lg shadow-rose-500/20 transition-all cursor-pointer"
                     >
-                      {drawerLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <LogOut className="w-4 h-4" />}
+                      <LogOut className="w-4 h-4" />
                       Settle &amp; Check-Out
                     </button>
                   </div>
@@ -1349,11 +1387,27 @@ const Dashboard = () => {
       {/* Room Shift Modal */}
       <RoomShiftModal
         isOpen={shiftModalOpen}
-        onClose={() => setShiftModalOpen(false)}
-        booking={shiftBookingData}
-        currentRoom={selectedRoom}
-        onSuccess={handleShiftSuccess}
+        onClose={handleCloseShiftModal}
+        booking={shiftBooking}
+        currentRoom={shiftCurrentRoom}
+        onShiftSuccess={fetchDashboardData}
       />
+
+      {/* Checkout Settlement Modal */}
+      {checkoutModalOpen && (
+        <CheckoutSettlementModal
+          isOpen={checkoutModalOpen}
+          onClose={() => {
+            setCheckoutModalOpen(false);
+            setCheckoutBookingId(null);
+          }}
+          bookingId={checkoutBookingId}
+          onSuccess={() => {
+            handleCloseDrawer();
+            fetchDashboardData();
+          }}
+        />
+      )}
     </div>
   );
 };

@@ -384,34 +384,69 @@ const InvoiceModal = ({ bookingId, onClose }) => {
                 </div>
               )}
 
-              {/* ── BILLING SUMMARY ────────────────────────────────────── */}
-              <div className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60 rounded-xl p-4">
-                <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-3 flex items-center gap-1.5">
-                  <IndianRupee className="w-3 h-3" /> Billing Summary
+              {/* ── BILLING SUMMARY & ITEMISED PAYMENT RECEIPTS ─────────── */}
+              <div className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60 rounded-xl p-4 space-y-3">
+                <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-1.5">
+                  <IndianRupee className="w-3 h-3" /> Stay Billing &amp; Payment Ledger
                 </p>
+
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-slate-600 dark:text-slate-400">Room Rate</span>
                     <span className="text-slate-800 dark:text-slate-200 font-semibold">₹{parseFloat(booking.room_rate || 0).toLocaleString('en-IN')}/night</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-600 dark:text-slate-400">Nights</span>
-                    <span className="text-slate-800 dark:text-slate-200 font-semibold">{typeof nights === 'number' ? nights : '—'}</span>
+                    <span className="text-slate-600 dark:text-slate-400">Duration</span>
+                    <span className="text-slate-800 dark:text-slate-200 font-semibold">{typeof nights === 'number' ? `${nights} night(s)` : '—'}</span>
                   </div>
                   <div className="flex justify-between border-t border-slate-200 dark:border-slate-700 pt-2">
-                    <span className="text-slate-700 dark:text-slate-300 font-semibold">Total Amount</span>
+                    <span className="text-slate-700 dark:text-slate-300 font-semibold">Gross Stay Charges</span>
                     <span className="text-slate-900 dark:text-white font-bold text-base">₹{parseFloat(booking.total_amount || 0).toLocaleString('en-IN')}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-emerald-400 font-semibold">Advance Paid</span>
-                    <span className="text-emerald-400 font-bold">₹{parseFloat(booking.advance_paid || 0).toLocaleString('en-IN')}</span>
-                  </div>
-                  <div className="flex justify-between border-t border-slate-200 dark:border-slate-700 pt-2">
-                    <span className={`font-bold ${pending > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>
-                      {pending > 0 ? 'Balance Due' : 'Settled'}
+
+                  {/* Discounts & Adjustments */}
+                  {booking.adjustments && booking.adjustments.length > 0 && (
+                    <div className="pt-2 border-t border-slate-200 dark:border-slate-700/60 space-y-1">
+                      {booking.adjustments.map((adj, i) => (
+                        <div key={i} className="flex justify-between text-xs text-purple-600 dark:text-purple-400">
+                          <span>Discount ({adj.reason || 'Courtesy'})</span>
+                          <span className="font-bold">− ₹{parseFloat(adj.amount).toLocaleString('en-IN')}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Itemized Payment Transactions */}
+                  {booking.payments && booking.payments.length > 0 ? (
+                    <div className="pt-2 border-t border-slate-200 dark:border-slate-700/60 space-y-1.5">
+                      <p className="text-[10px] font-black uppercase tracking-wider text-slate-500">Payments Recorded</p>
+                      {booking.payments.map((p, i) => (
+                        <div key={i} className="flex justify-between text-xs">
+                          <span className="text-slate-600 dark:text-slate-400">
+                            {p.payment_type === 'Advance' ? 'Advance' : p.payment_type === 'Checkout_Settlement' ? 'Settlement' : 'Payment'} ({p.payment_mode}{p.transaction_ref ? ` · Ref: ${p.transaction_ref}` : ''})
+                          </span>
+                          <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                            {p.payment_type === 'Refund' ? '− ' : '+ '}₹{parseFloat(p.amount).toLocaleString('en-IN')}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="flex justify-between text-xs">
+                      <span className="text-emerald-400 font-semibold">Advance Paid</span>
+                      <span className="text-emerald-400 font-bold">₹{parseFloat(booking.advance_paid || 0).toLocaleString('en-IN')}</span>
+                    </div>
+                  )}
+
+                  {/* Net Outstanding / Settled Status */}
+                  <div className="flex justify-between border-t border-slate-200 dark:border-slate-700 pt-2 text-sm font-bold">
+                    <span className={booking.payment_status === 'Paid' ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}>
+                      {booking.payment_status === 'Paid' ? '✓ Fully Settled' : 'Credit Khata / Balance Due'}
                     </span>
-                    <span className={`font-black text-base ${pending > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>
-                      ₹{Math.abs(pending).toLocaleString('en-IN')}
+                    <span className={`text-base font-black ${booking.payment_status === 'Paid' ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                      {booking.receivable && booking.receivable.status !== 'settled' 
+                        ? `₹${parseFloat(booking.receivable.outstanding_amount).toLocaleString('en-IN')} (Khata)`
+                        : booking.payment_status === 'Paid' ? '₹0.00' : `₹${Math.abs(pending).toLocaleString('en-IN')}`}
                     </span>
                   </div>
                 </div>

@@ -6,18 +6,19 @@ import api from '../../services/api.js';
 import { 
   LayoutDashboard, BedDouble, History, LogOut, Hotel, 
   Clock, User, Users, CalendarRange, Menu, X, Sun, Moon, Settings,
-  ArrowRightLeft, Activity
+  ArrowRightLeft, Activity, IndianRupee
 } from 'lucide-react';
 
 const NAV_LINKS = [
-  { to: '/dashboard',  icon: LayoutDashboard, label: 'Dashboard'       },
-  { to: '/rooms',      icon: BedDouble,        label: 'Rooms'           },
-  { to: '/bookings',   icon: CalendarRange,    label: 'Bookings'        },
-  { to: '/shifts',     icon: ArrowRightLeft,   label: 'Room Shifts'     }, // v2 — room transfer module
-  { to: '/history',    icon: History,          label: 'Booking History' },
-  { to: '/guests',     icon: Users,            label: 'Guests'          },
-  { to: '/activities', icon: Activity,         label: 'Activity Log'    },
-  { to: '/settings',   icon: Settings,         label: 'Settings'        },
+  { to: '/dashboard',  icon: LayoutDashboard, label: 'Dashboard'        },
+  { to: '/rooms',      icon: BedDouble,        label: 'Rooms'            },
+  { to: '/bookings',   icon: CalendarRange,    label: 'Bookings'         },
+  { to: '/shifts',     icon: ArrowRightLeft,   label: 'Room Shifts'      },
+  { to: '/finance',    icon: IndianRupee,      label: 'Finance & Ledger' },
+  { to: '/history',    icon: History,          label: 'Booking History'  },
+  { to: '/guests',     icon: Users,            label: 'Guests'           },
+  { to: '/activities', icon: Activity,         label: 'Activity Log'     },
+  { to: '/settings',   icon: Settings,         label: 'Settings'         },
 ];
 
 const MainLayout = ({ children }) => {

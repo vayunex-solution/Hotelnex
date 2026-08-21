@@ -1,6 +1,7 @@
 import express from 'express';
 import { 
   checkIn, 
+  getCheckoutPreview,
   checkOut, 
   getBookingHistory, 
   getDashboardStats, 
@@ -15,6 +16,7 @@ import {
 const router = express.Router();
 
 router.post('/checkin', checkIn);
+router.get('/checkout-preview/:id', getCheckoutPreview);
 router.post('/checkout/:id', checkOut);
 router.post('/shift-room', shiftRoom);
 router.get('/history', getBookingHistory);

@@ -13,6 +13,8 @@ import settingsRoutes  from './routes/settingsRoutes.js';
 import platformRoutes  from './routes/platformRoutes.js';
 import tenantRoutes    from './routes/tenantRoutes.js';
 import activityRoutes  from './routes/activityRoutes.js';
+import paymentRoutes   from './routes/paymentRoutes.js';
+import { runFinanceMigration } from './scripts/migrate_finance.js';
 import { requireAuth, requireVerification } from './middlewares/authMiddleware.js';
 import { requireRole } from './middlewares/rbacMiddleware.js';
 import { activityLogger } from './middlewares/activityLogger.js';
@@ -160,6 +162,9 @@ app.use('/api/tenant', tenantRoutes);
   } catch (e) {
     console.warn('[Migration] activity_logs table migration warning:', e.message);
   }
+
+  // 5. Ensure Finance, Payments, Receivables & Cash Drawer tables
+  await runFinanceMigration();
 })();
 
 // ─── Protected Routes ──────────────────────────────────────────────────────────
@@ -183,6 +188,9 @@ app.use('/api/settings', requireAuth, settingsRoutes);
 
 // Activity logs (requires auth)
 app.use('/api/activities', requireAuth, activityRoutes);
+
+// Finance & Payment Ledger module (requires auth)
+app.use('/api/finance', paymentRoutes);
 
 // Profile — any authenticated user
 app.get('/api/profile', requireAuth, (req, res) => {
