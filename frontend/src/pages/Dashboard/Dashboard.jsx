@@ -237,9 +237,13 @@ const Dashboard = () => {
     setShiftModalOpen(true);
   };
 
+  const handleCloseShiftModal = () => {
+    setShiftModalOpen(false);
+    setShiftBookingData(null);
+  };
+
   const handleShiftSuccess = () => {
-    fetchRooms();
-    fetchStats();
+    fetchDashboardData();
     fetchActiveBookings();
     setDrawerOpen(false);
     setOccupiedModalOpen(false);
@@ -1388,9 +1392,9 @@ const Dashboard = () => {
       <RoomShiftModal
         isOpen={shiftModalOpen}
         onClose={handleCloseShiftModal}
-        booking={shiftBooking}
-        currentRoom={shiftCurrentRoom}
-        onShiftSuccess={fetchDashboardData}
+        booking={shiftBookingData}
+        currentRoom={selectedRoom}
+        onSuccess={handleShiftSuccess}
       />
 
       {/* Checkout Settlement Modal */}
@@ -1403,7 +1407,8 @@ const Dashboard = () => {
           }}
           bookingId={checkoutBookingId}
           onSuccess={() => {
-            handleCloseDrawer();
+            setDrawerOpen(false);
+            setOccupiedModalOpen(false);
             fetchDashboardData();
           }}
         />
