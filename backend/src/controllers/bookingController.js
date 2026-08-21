@@ -17,6 +17,8 @@ const mapBookingUrls = async (booking) => {
   };
 };
 
+const round2 = (num) => Math.round((Number(num) || 0) * 100) / 100;
+
 // ─── Check-In Flow (Atomic Booking + Room Occupation + Payment Recording) ───
 export const checkIn = async (req, res) => {
   const { 
@@ -36,7 +38,8 @@ export const checkIn = async (req, res) => {
 
   const validModes = ['Cash', 'UPI', 'Card', 'Bank_Transfer', 'Other'];
   const paymentMode = validModes.includes(advance_payment_mode) ? advance_payment_mode : 'Cash';
-  const advance = advance_paid ? parseFloat(advance_paid) : 0.00;
+  const advance = advance_paid ? round2(advance_paid) : 0.00;
+  const dailyRate = round2(room_rate);
 
   try {
     const result = await transactionManager.runInTransaction(async (conn) => {
@@ -79,7 +82,7 @@ export const checkIn = async (req, res) => {
         checkOutTime = new Date('2099-12-31T23:59:59');
       }
 
-      const total_amount = parseFloat(room_rate) * nights;
+      const total_amount = round2(dailyRate * nights);
       const paymentStatus = advance >= total_amount ? 'Paid' : (advance > 0 ? 'Partial' : 'Unpaid');
 
       // 4. Update Room status to Occupied
@@ -100,7 +103,7 @@ export const checkIn = async (req, res) => {
           receptionist_id,
           checkInTime.toISOString().slice(0, 19).replace('T', ' '),
           checkOutTime.toISOString().slice(0, 19).replace('T', ' '),
-          parseFloat(room_rate),
+          dailyRate,
           total_amount,
           advance,
           paymentStatus
@@ -314,6 +317,19 @@ export const checkOut = async (req, res) => {
     idempotency_key = null
   } = req.body;
 
+  // 1. Enforce RBAC on Discounts / Waivers: Only Admin / Owner can authorize discounts
+  if (discount && round2(discount.amount) > 0) {
+    const userRole = (req.user.role || '').toLowerCase();
+    const isSuperAdmin = req.user.isSuperAdmin === true;
+    const isAuthorized = isSuperAdmin || userRole === 'admin' || userRole === 'owner';
+    if (!isAuthorized) {
+      return res.status(403).json({
+        success: false,
+        message: 'Unauthorized: Only administrator or owner roles can authorize billing discounts and waivers.'
+      });
+    }
+  }
+
   try {
     const result = await transactionManager.runInTransaction(async (conn) => {
       // 1. Lock and fetch booking
@@ -340,8 +356,8 @@ export const checkOut = async (req, res) => {
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
       const actualNights = diffDays > 0 ? diffDays : 1;
 
-      const dailyRate = parseFloat(booking.room_rate) || 0;
-      const actualGrossAmount = dailyRate * actualNights;
+      const dailyRate = round2(booking.room_rate);
+      const actualGrossAmount = round2(dailyRate * actualNights);
 
       // Prior payments from payments ledger
       const [payStats] = await conn.query(
@@ -350,16 +366,16 @@ export const checkOut = async (req, res) => {
          WHERE booking_id = ? AND hotel_id = ? AND status = 'completed'`,
         [id, hotel_id]
       );
-      const paidFromLedger = parseFloat(payStats[0]?.total_paid || 0);
-      const priorAdvance = parseFloat(booking.advance_paid) || 0;
+      const paidFromLedger = round2(payStats[0]?.total_paid || 0);
+      const priorAdvance = round2(booking.advance_paid || 0);
       const totalPaidPrior = Math.max(paidFromLedger, priorAdvance);
 
-      let outstandingBalance = Math.max(0, actualGrossAmount - totalPaidPrior);
+      let outstandingBalance = Math.max(0, round2(actualGrossAmount - totalPaidPrior));
 
       // 3. Process Discount / Adjustment if authorized
       let discountAmountApplied = 0.00;
-      if (discount && parseFloat(discount.amount) > 0) {
-        discountAmountApplied = Math.min(parseFloat(discount.amount), outstandingBalance);
+      if (discount && round2(discount.amount) > 0) {
+        discountAmountApplied = Math.min(round2(discount.amount), outstandingBalance);
         await conn.query(
           `INSERT INTO billing_adjustments 
              (tenant_id, hotel_id, booking_id, guest_id, type, amount, reason, created_by, approved_by)
@@ -375,7 +391,7 @@ export const checkOut = async (req, res) => {
             userId
           ]
         );
-        outstandingBalance -= discountAmountApplied;
+        outstandingBalance = Math.max(0, round2(outstandingBalance - discountAmountApplied));
       }
 
       // 4. Process Payments (Full / Split)
@@ -387,7 +403,7 @@ export const checkOut = async (req, res) => {
         
         for (let i = 0; i < payments.length; i++) {
           const p = payments[i];
-          const pAmount = parseFloat(p.amount) || 0.00;
+          const pAmount = round2(p.amount);
           if (pAmount <= 0) continue;
 
           const pMode = validModes.includes(p.mode) ? p.mode : 'Cash';
@@ -420,7 +436,7 @@ export const checkOut = async (req, res) => {
             ref: pRef
           });
 
-          totalCollectedAtCheckout += pAmount;
+          totalCollectedAtCheckout = round2(totalCollectedAtCheckout + pAmount);
 
           // If Cash, update active cash drawer
           if (pMode === 'Cash') {
@@ -433,7 +449,7 @@ export const checkOut = async (req, res) => {
           }
         }
 
-        outstandingBalance = Math.max(0, outstandingBalance - totalCollectedAtCheckout);
+        outstandingBalance = Math.max(0, round2(outstandingBalance - totalCollectedAtCheckout));
       }
 
       // 5. Process Credit Khata / Receivable if remaining balance > 0
@@ -502,31 +518,54 @@ export const checkOut = async (req, res) => {
       };
     });
 
-    // Publish Events
-    if (eventBus && typeof eventBus.publish === 'function') {
-      eventBus.publish('BookingCheckedOut', { bookingId: id }, {
-        tenantId: req.user?.tenantId || null,
-        propertyId: hotel_id,
-        userId: req.user?.id || req.user?.userId || null
-      }).catch(err => console.warn('[BookingController] EventBus publish ignored:', err.message));
+    // 8. Publish Events safely after transaction commit
+    try {
+      if (eventBus && typeof eventBus.publish === 'function') {
+        eventBus.publish(SYSTEM_EVENTS.BOOKING_CHECKED_OUT, { bookingId: id, hotelId: hotel_id }).catch(e => console.warn(e.message));
+        
+        if (result.receivableId) {
+          eventBus.publish(SYSTEM_EVENTS.RECEIVABLE_CREATED, {
+            receivableId: result.receivableId,
+            bookingId: id,
+            hotelId: hotel_id,
+            amount: result.remainingUnpaid
+          }).catch(e => console.warn(e.message));
+        }
+
+        if (Array.isArray(result.recordedPayments)) {
+          for (const p of result.recordedPayments) {
+            eventBus.publish(SYSTEM_EVENTS.PAYMENT_RECEIVED, {
+              paymentId: p.id,
+              bookingId: id,
+              hotelId: hotel_id,
+              amount: p.amount,
+              paymentType: 'Checkout_Settlement',
+              paymentMode: p.mode
+            }).catch(e => console.warn(e.message));
+          }
+        }
+      }
+    } catch (eventErr) {
+      logger.warn('[BookingController] Event emission warning:', eventErr.message);
     }
 
     return res.status(200).json({
       success: true,
       message: result.remainingUnpaid > 0 
-        ? `Check-out completed. Room released. ₹${result.remainingUnpaid} recorded in Debtors Khata.`
+        ? `Check-out completed. Room released. ₹${result.remainingUnpaid.toFixed(2)} recorded in Debtors Khata.`
         : 'Check-out & payment settlement finalized successfully. Room is now Available.',
       checkoutDetails: result
     });
-
   } catch (error) {
     logger.error('[BookingController] checkOut error:', error.message);
     return res.status(400).json({
       success: false,
-      message: error.message || 'An error occurred during check-out.',
+      message: error.message || 'Check-out settlement failed.',
     });
   }
 };
+
+
 
 // ─── Booking History List with Filters ───────────────────────────────────────
 export const getBookingHistory = async (req, res) => {

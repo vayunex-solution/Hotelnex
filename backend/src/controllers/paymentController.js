@@ -313,6 +313,8 @@ export const getDebtors = async (req, res) => {
   }
 };
 
+const round2 = (num) => Math.round((Number(num) || 0) * 100) / 100;
+
 /**
  * ─────────────────────────────────────────────────────────────────────────────
  * POST-CHECKOUT DEBTOR COLLECTION (SETTLE CREDIT KHATA)
@@ -325,9 +327,9 @@ export const collectDebtorPayment = async (req, res) => {
   const userId = req.user.id || req.user.userId;
   const { amount, payment_mode, transaction_ref, notes, idempotency_key } = req.body;
 
-  const paymentAmount = parseFloat(amount);
+  const paymentAmount = round2(amount);
   if (isNaN(paymentAmount) || paymentAmount <= 0) {
-    return res.status(400).json({ success: false, message: 'Valid payment amount is required.' });
+    return res.status(400).json({ success: false, message: 'Valid payment amount greater than 0 is required.' });
   }
 
   const validModes = ['Cash', 'UPI', 'Card', 'Bank_Transfer', 'Other'];
@@ -352,9 +354,9 @@ export const collectDebtorPayment = async (req, res) => {
         throw new Error(`This receivable is already in status: '${recv.status}'.`);
       }
 
-      const currentOutstanding = parseFloat(recv.outstanding_amount);
+      const currentOutstanding = round2(recv.outstanding_amount);
       if (paymentAmount > currentOutstanding) {
-        throw new Error(`Payment amount (₹${paymentAmount}) exceeds outstanding balance (₹${currentOutstanding}).`);
+        throw new Error(`Payment amount (₹${paymentAmount.toFixed(2)}) exceeds outstanding balance (₹${currentOutstanding.toFixed(2)}).`);
       }
 
       // 2. Check Idempotency
@@ -390,9 +392,9 @@ export const collectDebtorPayment = async (req, res) => {
 
       const paymentId = payResult.insertId;
 
-      // 4. Update Receivable record
-      const newPaidAmount = parseFloat(recv.paid_amount) + paymentAmount;
-      const newOutstanding = currentOutstanding - paymentAmount;
+      // 4. Update Receivable record with safe precision arithmetic
+      const newPaidAmount = round2(round2(recv.paid_amount) + paymentAmount);
+      const newOutstanding = Math.max(0, round2(currentOutstanding - paymentAmount));
       const newStatus = newOutstanding <= 0 ? 'settled' : 'partially_paid';
 
       await conn.query(
@@ -423,15 +425,39 @@ export const collectDebtorPayment = async (req, res) => {
       return {
         paymentId,
         receivableId: recv.id,
+        bookingId: recv.booking_id,
         amountCollected: paymentAmount,
         remainingOutstanding: newOutstanding,
         newStatus
       };
     });
 
+    // 7. Emit System Events safely after transaction commit
+    try {
+      eventBus.publish(SYSTEM_EVENTS.PAYMENT_RECEIVED, {
+        paymentId: result.paymentId,
+        bookingId: result.bookingId,
+        hotelId,
+        amount: result.amountCollected,
+        paymentType: 'Post_Checkout_Due',
+        paymentMode: mode
+      });
+
+      if (result.newStatus === 'settled') {
+        eventBus.publish(SYSTEM_EVENTS.RECEIVABLE_SETTLED, {
+          receivableId: result.receivableId,
+          bookingId: result.bookingId,
+          hotelId,
+          settledAt: new Date().toISOString()
+        });
+      }
+    } catch (eventErr) {
+      logger.warn('[PaymentController] Event emission warning:', eventErr.message);
+    }
+
     return res.status(200).json({
       success: true,
-      message: `Payment of ₹${paymentAmount} recorded successfully.`,
+      message: `Payment of ₹${paymentAmount.toFixed(2)} recorded successfully.`,
       data: result
     });
 
@@ -444,7 +470,8 @@ export const collectDebtorPayment = async (req, res) => {
 /**
  * ─────────────────────────────────────────────────────────────────────────────
  * REFUND / REVERSAL TRANSACTION
- * Creates an immutable refund record linked to the original payment
+ * Creates an immutable refund record linked to the original payment with
+ * multi-partial refund ceiling validation and row locking.
  * ─────────────────────────────────────────────────────────────────────────────
  */
 export const processRefund = async (req, res) => {
@@ -453,9 +480,9 @@ export const processRefund = async (req, res) => {
   const userId = req.user.id || req.user.userId;
   const { amount, reason } = req.body;
 
-  const refundAmount = parseFloat(amount);
+  const refundAmount = round2(amount);
   if (isNaN(refundAmount) || refundAmount <= 0) {
-    return res.status(400).json({ success: false, message: 'Valid refund amount is required.' });
+    return res.status(400).json({ success: false, message: 'Valid refund amount greater than 0 is required.' });
   }
 
   if (!reason || !reason.trim()) {
@@ -464,7 +491,7 @@ export const processRefund = async (req, res) => {
 
   try {
     const result = await transactionManager.runInTransaction(async (conn) => {
-      // 1. Lock and fetch original payment
+      // 1. Lock and fetch original payment row
       const [payments] = await conn.query(
         `SELECT id, tenant_id, hotel_id, booking_id, guest_id, amount, payment_mode, payment_type, status
          FROM payments
@@ -478,14 +505,34 @@ export const processRefund = async (req, res) => {
 
       const orig = payments[0];
       if (orig.status === 'refunded' || orig.payment_type === 'Refund') {
-        throw new Error('This transaction is already refunded.');
+        throw new Error('This transaction is already fully refunded.');
       }
 
-      if (refundAmount > parseFloat(orig.amount)) {
-        throw new Error(`Refund amount (₹${refundAmount}) cannot exceed original payment (₹${orig.amount}).`);
+      // 2. Aggregate all previous valid refunds linked to this payment
+      const origAmount = round2(orig.amount);
+      const [prevRefundRows] = await conn.query(
+        `SELECT COALESCE(SUM(amount), 0) AS total_refunded
+         FROM payments
+         WHERE hotel_id = ? AND booking_id = ? AND payment_type = 'Refund'
+           AND status = 'completed'
+           AND (notes LIKE ? OR notes LIKE ?)`,
+        [hotelId, orig.booking_id, `Refund for Txn #${orig.id}:%`, `Refund for Txn #${orig.id}`]
+      );
+
+      const totalPrevRefunds = round2(prevRefundRows[0]?.total_refunded || 0);
+      const remainingRefundable = Math.max(0, round2(origAmount - totalPrevRefunds));
+
+      if (remainingRefundable <= 0) {
+        throw new Error(`This transaction of ₹${origAmount.toFixed(2)} has already been fully refunded.`);
       }
 
-      // 2. Insert Immutable Refund Entry
+      if (refundAmount > remainingRefundable) {
+        throw new Error(
+          `Refund amount (₹${refundAmount.toFixed(2)}) exceeds remaining refundable balance (₹${remainingRefundable.toFixed(2)}). Already refunded: ₹${totalPrevRefunds.toFixed(2)} of ₹${origAmount.toFixed(2)}.`
+        );
+      }
+
+      // 3. Insert Immutable Refund Entry
       const [refundResult] = await conn.query(
         `INSERT INTO payments 
            (tenant_id, hotel_id, booking_id, guest_id, amount, payment_type, payment_mode, notes, collected_by, status)
@@ -502,12 +549,13 @@ export const processRefund = async (req, res) => {
         ]
       );
 
-      // 3. Mark original payment status as refunded if full
-      if (refundAmount >= parseFloat(orig.amount)) {
+      // 4. Mark original payment status as refunded if total refunds reach or exceed original amount
+      const newTotalRefunds = round2(totalPrevRefunds + refundAmount);
+      if (newTotalRefunds >= origAmount) {
         await conn.query(`UPDATE payments SET status = 'refunded' WHERE id = ?`, [orig.id]);
       }
 
-      // 4. If Cash refund, update active cash drawer
+      // 5. If Cash refund, update active cash drawer
       if (orig.payment_mode === 'Cash') {
         await conn.query(
           `UPDATE cash_drawers 
@@ -520,14 +568,31 @@ export const processRefund = async (req, res) => {
       return {
         refundId: refundResult.insertId,
         originalTxnId: orig.id,
+        bookingId: orig.booking_id,
         refundAmount,
+        totalRefundedSoFar: newTotalRefunds,
+        remainingRefundable: Math.max(0, round2(origAmount - newTotalRefunds)),
         mode: orig.payment_mode
       };
     });
 
+    // 6. Emit System Events safely after transaction commit
+    try {
+      eventBus.publish(SYSTEM_EVENTS.PAYMENT_REFUNDED, {
+        refundId: result.refundId,
+        originalTxnId: result.originalTxnId,
+        bookingId: result.bookingId,
+        hotelId,
+        amount: result.refundAmount,
+        paymentMode: result.mode
+      });
+    } catch (eventErr) {
+      logger.warn('[PaymentController] Event emission warning:', eventErr.message);
+    }
+
     return res.status(200).json({
       success: true,
-      message: `Refund of ₹${refundAmount} processed successfully.`,
+      message: `Refund of ₹${refundAmount.toFixed(2)} processed successfully.`,
       data: result
     });
 
@@ -602,7 +667,7 @@ export const openCashDrawer = async (req, res) => {
   const userId = req.user.id || req.user.userId;
   const { opening_balance = 0.00 } = req.body;
 
-  const openBal = parseFloat(opening_balance) || 0.00;
+  const openBal = round2(opening_balance);
 
   try {
     // Check if there is already an open drawer
@@ -624,10 +689,24 @@ export const openCashDrawer = async (req, res) => {
       [req.user.tenantId || null, hotelId, userId, todayStr, openBal, openBal]
     );
 
+    const drawerId = insertResult.insertId;
+
+    try {
+      eventBus.publish(SYSTEM_EVENTS.CASH_DRAWER_OPENED, {
+        drawerId,
+        hotelId,
+        openedBy: userId,
+        openingBalance: openBal,
+        openedAt: new Date().toISOString()
+      });
+    } catch (eventErr) {
+      logger.warn('[PaymentController] Event emission warning:', eventErr.message);
+    }
+
     return res.status(201).json({
       success: true,
       message: 'Cash drawer opened successfully.',
-      drawerId: insertResult.insertId,
+      drawerId,
       openingBalance: openBal
     });
 
@@ -642,7 +721,7 @@ export const closeCashDrawer = async (req, res) => {
   const userId = req.user.id || req.user.userId;
   const { actual_cash, closing_notes } = req.body;
 
-  const actualCashCount = parseFloat(actual_cash);
+  const actualCashCount = round2(actual_cash);
   if (isNaN(actualCashCount) || actualCashCount < 0) {
     return res.status(400).json({ success: false, message: 'Actual counted cash amount is required.' });
   }
@@ -662,8 +741,8 @@ export const closeCashDrawer = async (req, res) => {
       }
 
       const drawer = drawers[0];
-      const expected = parseFloat(drawer.expected_cash);
-      const variance = actualCashCount - expected;
+      const expected = round2(drawer.expected_cash);
+      const variance = round2(actualCashCount - expected);
 
       await conn.query(
         `UPDATE cash_drawers 
@@ -679,6 +758,20 @@ export const closeCashDrawer = async (req, res) => {
         variance
       };
     });
+
+    try {
+      eventBus.publish(SYSTEM_EVENTS.CASH_DRAWER_CLOSED, {
+        drawerId: result.drawerId,
+        hotelId,
+        closedBy: userId,
+        expectedCash: result.expectedCash,
+        actualCash: result.actualCash,
+        variance: result.variance,
+        closedAt: new Date().toISOString()
+      });
+    } catch (eventErr) {
+      logger.warn('[PaymentController] Event emission warning:', eventErr.message);
+    }
 
     return res.status(200).json({
       success: true,

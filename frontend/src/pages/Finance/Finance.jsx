@@ -118,18 +118,40 @@ export default function Finance() {
     }
   }, [activeTab, fetchTransactions, fetchDebtors]);
 
-  // Export CSV
-  const handleExportCSV = () => {
-    let url = `${api.defaults.baseURL || ''}/finance/export?`;
-    const params = new URLSearchParams();
-    if (filterMode) params.append('payment_mode', filterMode);
-    if (filterType) params.append('payment_type', filterType);
-    if (startDate && endDate) {
-      params.append('start_date', startDate);
-      params.append('end_date', endDate);
+  const [exportingCSV, setExportingCSV] = useState(false);
+
+  // Export CSV via authenticated Axios request with Blob download
+  const handleExportCSV = async () => {
+    setExportingCSV(true);
+    try {
+      const params = {};
+      if (filterMode) params.payment_mode = filterMode;
+      if (filterType) params.payment_type = filterType;
+      if (period === 'custom' && startDate && endDate) {
+        params.start_date = startDate;
+        params.end_date = endDate;
+      }
+
+      const response = await api.get('/finance/export', {
+        params,
+        responseType: 'blob'
+      });
+
+      const blob = new Blob([response.data], { type: 'text/csv;charset=utf-8;' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `hotelnex_finance_ledger_${new Date().toISOString().slice(0, 10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Failed to export CSV:', err);
+      alert('Failed to export CSV: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setExportingCSV(false);
     }
-    const token = localStorage.getItem('token');
-    window.open(`${api.defaults.baseURL || ''}/api/finance/export?${params.toString()}&token=${token}`, '_blank');
   };
 
   const getModeBadge = (mode) => {
@@ -231,11 +253,12 @@ export default function Finance() {
           {/* Export CSV */}
           <button
             type="button"
+            disabled={exportingCSV}
             onClick={handleExportCSV}
-            className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-md shadow-indigo-600/20 flex items-center gap-1.5 transition-all cursor-pointer"
+            className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-800 disabled:opacity-60 text-white text-xs font-bold shadow-md shadow-indigo-600/20 flex items-center gap-1.5 transition-all cursor-pointer"
           >
-            <Download className="w-3.5 h-3.5" />
-            <span>Export CSV</span>
+            <Download className={`w-3.5 h-3.5 ${exportingCSV ? 'animate-bounce' : ''}`} />
+            <span>{exportingCSV ? 'Exporting…' : 'Export CSV'}</span>
           </button>
         </div>
       </div>

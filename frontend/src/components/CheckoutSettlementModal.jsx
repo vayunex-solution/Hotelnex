@@ -41,9 +41,14 @@ export default function CheckoutSettlementModal({ isOpen, onClose, bookingId, on
   const [discountAmount, setDiscountAmount] = useState('');
   const [discountReason, setDiscountReason] = useState('');
 
+  // Idempotency Key (Generated ONCE per modal open lifecycle)
+  const [idempotencyKey, setIdempotencyKey] = useState('');
+
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [successData, setSuccessData] = useState(null);
+
+  const round2 = (num) => Math.round((Number(num) || 0) * 100) / 100;
 
   useEffect(() => {
     if (isOpen && bookingId) {
@@ -57,6 +62,9 @@ export default function CheckoutSettlementModal({ isOpen, onClose, bookingId, on
       setDiscountReason('');
       setError('');
       setSuccessData(null);
+      // Generate one stable idempotency key for this checkout modal session
+      const generatedKey = `chk_${bookingId}_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+      setIdempotencyKey(generatedKey);
     }
   }, [isOpen, bookingId]);
 
@@ -70,11 +78,12 @@ export default function CheckoutSettlementModal({ isOpen, onClose, bookingId, on
         setDebtorName(res.data.data.guestName || '');
         setDebtorPhone(res.data.data.guestPhone || '');
         // Initialize splits
-        const bal = res.data.data.balanceDue;
+        const bal = round2(res.data.data.balanceDue);
         if (bal > 0) {
+          const half = round2(bal / 2);
           setSplits([
-            { mode: 'Cash', amount: Math.floor(bal / 2).toString(), transaction_ref: '' },
-            { mode: 'UPI', amount: (bal - Math.floor(bal / 2)).toString(), transaction_ref: '' }
+            { mode: 'Cash', amount: half.toString(), transaction_ref: '' },
+            { mode: 'UPI', amount: round2(bal - half).toString(), transaction_ref: '' }
           ]);
         }
       }
@@ -87,12 +96,12 @@ export default function CheckoutSettlementModal({ isOpen, onClose, bookingId, on
 
   if (!isOpen) return null;
 
-  const balanceDue = preview ? preview.balanceDue : 0;
+  const balanceDue = preview ? round2(preview.balanceDue) : 0;
   const isZeroBalance = balanceDue <= 0;
 
-  // Calculate remaining balance for split payments
-  const totalSplits = splits.reduce((acc, s) => acc + (parseFloat(s.amount) || 0), 0);
-  const splitRemaining = balanceDue - totalSplits;
+  // Calculate remaining balance for split payments with safe decimal precision
+  const totalSplits = round2(splits.reduce((acc, s) => acc + (parseFloat(s.amount) || 0), 0));
+  const splitRemaining = round2(balanceDue - totalSplits);
 
   const addSplitRow = () => {
     setSplits(prev => [...prev, { mode: 'Cash', amount: '', transaction_ref: '' }]);
@@ -112,7 +121,7 @@ export default function CheckoutSettlementModal({ isOpen, onClose, bookingId, on
 
     let payload = {
       settlement_strategy: strategy,
-      idempotency_key: `chk_${bookingId}_${Date.now()}`
+      idempotency_key: idempotencyKey || `chk_${bookingId}_${Date.now()}`
     };
 
     if (isZeroBalance) {
@@ -128,47 +137,55 @@ export default function CheckoutSettlementModal({ isOpen, onClose, bookingId, on
       ];
     } else if (strategy === 'split') {
       if (Math.abs(splitRemaining) > 0.01) {
-        setError(`Split amounts sum (₹${totalSplits}) must exactly equal balance due (₹${balanceDue}). Remaining: ₹${splitRemaining.toFixed(2)}`);
+        setError(`Split payment total must equal exactly ₹${balanceDue.toFixed(2)}. Currently remaining: ₹${splitRemaining.toFixed(2)}.`);
         setSubmitting(false);
         return;
       }
       payload.payments = splits.map(s => ({
         mode: s.mode,
-        amount: parseFloat(s.amount),
-        transaction_ref: s.transaction_ref?.trim() || null
-      }));
+        amount: round2(s.amount),
+        transaction_ref: s.transaction_ref?.trim() || '',
+        notes: `Split payment (${s.mode})`
+      })).filter(s => s.amount > 0);
     } else if (strategy === 'khata') {
       payload.settlement_strategy = 'credit_khata';
       payload.receivable = {
         due_date: dueDate || null,
-        debtor_name: debtorName.trim(),
-        debtor_phone: debtorPhone.trim(),
-        notes: khataNotes.trim()
+        debtor_name: debtorName.trim() || preview?.guestName,
+        debtor_phone: debtorPhone.trim() || preview?.guestPhone,
+        notes: khataNotes.trim() || 'Deferred balance at checkout'
       };
       payload.settlement_notes = `Credit Khata: ${khataNotes.trim() || 'Payment deferred'}`;
     } else if (strategy === 'discount') {
-      const dAmt = parseFloat(discountAmount);
-      if (isNaN(dAmt) || dAmt <= 0) {
-        setError('Please enter a valid discount amount.');
+      const discAmt = round2(discountAmount);
+      if (isNaN(discAmt) || discAmt <= 0) {
+        setError('Please enter a valid discount amount greater than 0.');
+        setSubmitting(false);
+        return;
+      }
+      if (discAmt > balanceDue) {
+        setError(`Discount (₹${discAmt.toFixed(2)}) cannot exceed balance due (₹${balanceDue.toFixed(2)}).`);
         setSubmitting(false);
         return;
       }
       if (!discountReason.trim()) {
-        setError('Discount / Waiver reason is mandatory.');
+        setError('A reason for the discount or waiver is mandatory.');
         setSubmitting(false);
         return;
       }
       payload.discount = {
-        amount: dAmt,
+        amount: discAmt,
         reason: discountReason.trim()
       };
-      if (dAmt < balanceDue) {
-        // Collect remainder in cash or prompt
+      // If discount doesn't cover full balance, collect remaining via chosen fullMode
+      const remainingAfterDiscount = round2(balanceDue - discAmt);
+      if (remainingAfterDiscount > 0) {
         payload.payments = [
           {
             mode: fullMode,
-            amount: balanceDue - dAmt,
-            transaction_ref: fullRef.trim()
+            amount: remainingAfterDiscount,
+            transaction_ref: fullRef.trim(),
+            notes: `Balance payment after ₹${discAmt.toFixed(2)} discount`
           }
         ];
       }
